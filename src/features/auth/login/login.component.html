@@ -1,0 +1,89 @@
+<div class="login-page">
+  <mat-card class="login-card">
+    <!-- Encabezado con marca -->
+    <mat-card-header>
+      <mat-card-title class="login-title">Creci</mat-card-title>
+      <mat-card-subtitle class="login-subtitle">Ingresá a tu cuenta para continuar</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form
+        [formGroup]="form"
+        (ngSubmit)="onSubmit()"
+        novalidate
+        aria-label="Formulario de inicio de sesión"
+      >
+        <!-- Campo email -->
+        <mat-form-field appearance="outline" class="login-field">
+          <mat-label>Email</mat-label>
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            aria-label="Dirección de email"
+            aria-required="true"
+          />
+          @if (form.controls.email.hasError('required') && form.controls.email.touched) {
+            <mat-error>El email es requerido</mat-error>
+          } @else if (form.controls.email.hasError('email') && form.controls.email.touched) {
+            <mat-error>Ingresá un email válido</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Campo contraseña con toggle de visibilidad -->
+        <mat-form-field appearance="outline" class="login-field">
+          <mat-label>Contraseña</mat-label>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password"
+            autocomplete="current-password"
+            aria-label="Contraseña"
+            aria-required="true"
+          />
+          <button
+            type="button"
+            mat-icon-button
+            matSuffix
+            (click)="togglePasswordVisibility($event)"
+            [attr.aria-label]="hidePassword() ? 'Mostrar contraseña' : 'Ocultar contraseña'"
+          >
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+            <mat-error>La contraseña es requerida</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Mensaje de error de autenticación -->
+        @if (errorMessage()) {
+          <div
+            class="login-error"
+            role="alert"
+            aria-live="polite"
+          >
+            <mat-icon class="login-error__icon">error_outline</mat-icon>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+
+        <!-- Botón de submit -->
+        <button
+          type="submit"
+          mat-raised-button
+          color="primary"
+          class="login-submit"
+          [disabled]="form.invalid || isLoading()"
+          aria-label="Iniciar sesión"
+        >
+          @if (isLoading()) {
+            <mat-spinner diameter="20" class="login-spinner" />
+          } @else {
+            Iniciar sesión
+          }
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
