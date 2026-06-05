@@ -1,0 +1,5 @@
+/* Estilos mínimos del app shell — el tema global vive en styles.scss */
+:host {
+  display: block;
+  height: 100%;
+}
