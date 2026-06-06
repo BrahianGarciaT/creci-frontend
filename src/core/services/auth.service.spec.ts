@@ -199,4 +199,76 @@ describe('AuthService', () => {
 
     expect(freshService.isAuthenticated()).toBe(true);
   });
+
+  // --- currentUser (señal con decode de JWT) ---
+
+  /**
+   * Construye un JWT de prueba con el payload dado (sin firma real).
+   * Suficiente para que atob() pueda decodificarlo en los tests.
+   */
+  function buildFakeJwt(payload: Record<string, unknown>): string {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const body = btoa(JSON.stringify(payload));
+    return `${header}.${body}.signature`;
+  }
+
+  it('debe establecer currentUser al llamar setTokens() con un JWT válido', () => {
+    const payload = { sub: 'user-1', email: 'admin@test.com', role: 'admin' };
+    const tokens = { accessToken: buildFakeJwt(payload), refreshToken: 'refresh-token' };
+
+    service.login('admin@test.com', 'password123').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
+    req.flush(tokens);
+
+    expect(service.currentUser()).toEqual({ id: 'user-1', email: 'admin@test.com', role: 'admin' });
+  });
+
+  it('debe establecer currentUser a null cuando el token está malformado', () => {
+    const tokens = { accessToken: 'not.a.valid.jwt', refreshToken: 'refresh-token' };
+
+    service.login('user@test.com', 'password123').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
+    req.flush(tokens);
+
+    expect(service.currentUser()).toBeNull();
+  });
+
+  it('debe establecer currentUser a null al llamar clearTokens()', () => {
+    // Primero autenticamos con un JWT válido
+    const payload = { sub: 'user-1', email: 'user@test.com', role: 'developer' };
+    const tokens = { accessToken: buildFakeJwt(payload), refreshToken: 'refresh-token' };
+
+    service.login('user@test.com', 'password123').subscribe();
+    const req = httpMock.expectOne(`${environment.apiUrl}/auth/login`);
+    req.flush(tokens);
+
+    expect(service.currentUser()).not.toBeNull();
+
+    // Ahora limpiamos los tokens
+    service.clearTokens();
+
+    expect(service.currentUser()).toBeNull();
+  });
+
+  it('debe inicializar currentUser desde el token almacenado en localStorage al construir el servicio', () => {
+    const payload = { sub: 'user-stored', email: 'stored@test.com', role: 'admin' };
+    localStorage.setItem('accessToken', buildFakeJwt(payload));
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', component: LoginStubComponent }]),
+        AuthService,
+      ],
+    });
+
+    const freshService = TestBed.inject(AuthService);
+    TestBed.inject(HttpTestingController); // registrar para afterEach verify
+
+    expect(freshService.currentUser()).toEqual({ id: 'user-stored', email: 'stored@test.com', role: 'admin' });
+  });
 });
