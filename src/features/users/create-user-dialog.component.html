@@ -1,0 +1,93 @@
+<h2 mat-dialog-title>New user</h2>
+
+<mat-dialog-content>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    novalidate
+    aria-label="Create user form"
+    class="dialog-form"
+  >
+    <!-- Campo email -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Email</mat-label>
+      <input
+        matInput
+        type="email"
+        formControlName="email"
+        autocomplete="off"
+        aria-label="Email address"
+        aria-required="true"
+      />
+      @if (form.controls.email.hasError('required') && form.controls.email.touched) {
+        <mat-error>Email is required</mat-error>
+      } @else if (form.controls.email.hasError('email') && form.controls.email.touched) {
+        <mat-error>Enter a valid email address</mat-error>
+      } @else if (form.controls.email.hasError('conflict')) {
+        <mat-error>Email already in use</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Campo contraseña con toggle de visibilidad -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="password"
+        autocomplete="new-password"
+        aria-label="Password"
+        aria-required="true"
+      />
+      <button
+        type="button"
+        mat-icon-button
+        matSuffix
+        (click)="togglePasswordVisibility($event)"
+        [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+      >
+        <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+      </button>
+      @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+        <mat-error>Password is required</mat-error>
+      } @else if (form.controls.password.hasError('minlength') && form.controls.password.touched) {
+        <mat-error>Password must be at least 8 characters</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Selector de rol -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Role</mat-label>
+      <mat-select formControlName="role" aria-label="User role">
+        <mat-option value="developer">Developer</mat-option>
+        <mat-option value="admin">Admin</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Banner de error genérico (errores no 409) -->
+    @if (errorMessage()) {
+      <div class="dialog-error" role="alert" aria-live="polite">
+        <mat-icon class="dialog-error__icon">error_outline</mat-icon>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-button mat-dialog-close aria-label="Cancel">Cancel</button>
+  <button
+    type="submit"
+    mat-raised-button
+    color="primary"
+    [disabled]="form.invalid || isSubmitting()"
+    (click)="submit()"
+    aria-label="Create user"
+  >
+    @if (isSubmitting()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      Create
+    }
+  </button>
+</mat-dialog-actions>
