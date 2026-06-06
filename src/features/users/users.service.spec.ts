@@ -25,6 +25,8 @@ describe('UsersService', () => {
 
     service = TestBed.inject(UsersService);
     httpTesting = TestBed.inject(HttpTestingController);
+    // En zoneless los efectos no corren sincrónicamente — flush para que httpResource dispare la GET inicial
+    TestBed.flushEffects();
   });
 
   afterEach(() => {
