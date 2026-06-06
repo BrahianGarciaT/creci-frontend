@@ -3,7 +3,7 @@
     <!-- Encabezado con marca -->
     <mat-card-header>
       <mat-card-title class="login-title">Creci</mat-card-title>
-      <mat-card-subtitle class="login-subtitle">Ingresá a tu cuenta para continuar</mat-card-subtitle>
+      <mat-card-subtitle class="login-subtitle">Ingresa a tu cuenta para continuar</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
@@ -27,7 +27,7 @@
           @if (form.controls.email.hasError('required') && form.controls.email.touched) {
             <mat-error>El email es requerido</mat-error>
           } @else if (form.controls.email.hasError('email') && form.controls.email.touched) {
-            <mat-error>Ingresá un email válido</mat-error>
+            <mat-error>Ingresa un email válido</mat-error>
           }
         </mat-form-field>
 

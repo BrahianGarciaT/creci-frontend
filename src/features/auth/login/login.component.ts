@@ -73,9 +73,9 @@ export class LoginComponent {
         this.isLoading.set(false);
         // Mostramos mensaje de error amigable según el tipo de falla
         if (err?.status === 401) {
-          this.errorMessage.set('Credenciales inválidas. Verificá tu email y contraseña.');
+          this.errorMessage.set('Credenciales inválidas. Verifica tu email y contraseña.');
         } else {
-          this.errorMessage.set('Error al iniciar sesión. Intentá nuevamente.');
+          this.errorMessage.set('Error al iniciar sesión. Intenta nuevamente.');
         }
       },
     });

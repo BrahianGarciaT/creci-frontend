@@ -70,7 +70,7 @@ describe('LoginComponent', () => {
       await userEvent.tab();
 
       await waitFor(() => {
-        expect(screen.getByText(/ingresá un email válido/i)).toBeTruthy();
+        expect(screen.getByText(/ingresa un email válido/i)).toBeTruthy();
       });
     });
 
