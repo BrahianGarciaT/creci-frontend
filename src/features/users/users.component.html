@@ -1,0 +1,109 @@
+<div class="users-page">
+  <!-- Encabezado con título y botón de acción -->
+  <div class="users-header">
+    <h1 class="users-title">Users</h1>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="openCreateDialog()"
+      aria-label="New user"
+    >
+      <mat-icon>add</mat-icon>
+      New user
+    </button>
+  </div>
+
+  <!-- Banner de error de mutaciones (deactivate) -->
+  @if (mutationError()) {
+    <div class="users-error" role="alert" aria-live="polite">
+      <mat-icon class="users-error__icon">error_outline</mat-icon>
+      <span>{{ mutationError() }}</span>
+    </div>
+  }
+
+  <!-- Estado de carga -->
+  @if (usersResource.isLoading()) {
+    <div class="users-loading" aria-label="Loading users">
+      <mat-spinner diameter="40" />
+    </div>
+  }
+
+  <!-- Estado de error al cargar la lista -->
+  @if (usersResource.error()) {
+    <div class="users-error" role="alert">
+      <mat-icon class="users-error__icon">error_outline</mat-icon>
+      <span>Error loading users. Please try again.</span>
+    </div>
+  }
+
+  <!-- Tabla de usuarios -->
+  @if (!usersResource.isLoading() && !usersResource.error()) {
+    <mat-table [dataSource]="usersResource.value() ?? []" class="users-table" aria-label="Users table">
+      <!-- Columna email -->
+      <ng-container matColumnDef="email">
+        <mat-header-cell *matHeaderCellDef>Email</mat-header-cell>
+        <mat-cell *matCellDef="let row">{{ row.email }}</mat-cell>
+      </ng-container>
+
+      <!-- Columna rol -->
+      <ng-container matColumnDef="role">
+        <mat-header-cell *matHeaderCellDef>Role</mat-header-cell>
+        <mat-cell *matCellDef="let row">
+          <span class="role-badge role-badge--{{ row.role }}">{{ row.role }}</span>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Columna estado -->
+      <ng-container matColumnDef="status">
+        <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+        <mat-cell *matCellDef="let row">
+          <span class="status-badge" [class.status-badge--active]="row.isActive" [class.status-badge--inactive]="!row.isActive">
+            {{ row.isActive ? 'Active' : 'Inactive' }}
+          </span>
+        </mat-cell>
+      </ng-container>
+
+      <!-- Columna acciones -->
+      <ng-container matColumnDef="actions">
+        <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+        <mat-cell *matCellDef="let row">
+          @if (row.role !== 'admin' && row.isActive) {
+            @if (pendingDeactivateId() === row.id) {
+              <!-- Confirmación inline de desactivación -->
+              <div class="deactivate-confirm">
+                <span class="deactivate-confirm__label">Deactivate {{ row.email }}?</span>
+                <button
+                  mat-button
+                  color="warn"
+                  (click)="confirmDeactivate(row.id)"
+                  [attr.aria-label]="'Confirm deactivate ' + row.email"
+                >
+                  Confirm
+                </button>
+                <button
+                  mat-button
+                  (click)="cancelDeactivate()"
+                  [attr.aria-label]="'Cancel deactivate ' + row.email"
+                >
+                  Cancel
+                </button>
+              </div>
+            } @else {
+              <button
+                mat-icon-button
+                (click)="requestDeactivate(row.id)"
+                [attr.aria-label]="'Deactivate ' + row.email"
+                title="Deactivate user"
+              >
+                <mat-icon>block</mat-icon>
+              </button>
+            }
+          }
+        </mat-cell>
+      </ng-container>
+
+      <mat-header-row *matHeaderRowDef="displayedColumns" />
+      <mat-row *matRowDef="let row; columns: displayedColumns" />
+    </mat-table>
+  }
+</div>
