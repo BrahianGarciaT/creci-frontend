@@ -4,7 +4,7 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
 // URLs de autenticación que deben pasar sin modificación ni reintentos
-const AUTH_BYPASS_URLS = ['/auth/login', '/auth/refresh'];
+const AUTH_BYPASS_URLS = ['/auth/login', '/auth/refresh', '/auth/logout'];
 
 /**
  * Interceptor funcional de autenticación.
@@ -50,8 +50,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           return next(retryReq);
         }),
         catchError((refreshError) => {
-          // El refresh falló — limpiamos sesión y redirigimos
-          authService.clearTokens();
+          // El refresh falló — logout() ya limpia tokens y redirige
           authService.logout();
           return throwError(() => refreshError);
         }),
