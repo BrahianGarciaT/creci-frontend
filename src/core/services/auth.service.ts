@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, shareReplay, tap } from 'rxjs';
+import { Observable, of, shareReplay, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 // Contratos de la API de autenticación
@@ -15,6 +15,13 @@ interface AuthTokens {
   refreshToken: string;
 }
 
+// Información del usuario actual decodificada desde el JWT
+export interface CurrentUser {
+  id: string;
+  email: string;
+  role: string;
+}
+
 // Claves de localStorage para los tokens JWT
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
@@ -26,6 +33,9 @@ export class AuthService {
 
   // Estado reactivo de autenticación basado en la existencia del access token
   readonly isAuthenticated = signal<boolean>(this.hasValidToken());
+
+  // Usuario actual decodificado desde el JWT almacenado — se hidrata al iniciar
+  readonly currentUser = signal<CurrentUser | null>(this.decodeJwt(localStorage.getItem(ACCESS_TOKEN_KEY)));
 
   // Observable compartido del refresh en vuelo — evita múltiples llamadas paralelas
   private refreshInFlight$: Observable<AuthTokens> | null = null;
@@ -75,17 +85,19 @@ export class AuthService {
    * Cierra sesión: limpia tokens locales y navega a /login.
    * La llamada al backend es best-effort (fire-and-forget).
    */
-  logout(): void {
+  logout(): Observable<void> {
     const accessToken = this.getAccessToken();
 
+    // Notifica al backend best-effort — no bloqueamos la navegación
     this.http
       .post(`${environment.apiUrl}/auth/logout`, {}, {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       })
-      .subscribe({ error: () => { /* ignoramos errores del logout remoto */ } });
+      .subscribe({ error: () => {} });
 
     this.clearTokens();
     this.router.navigate(['/login']);
+    return of(undefined);
   }
 
   /** Devuelve el accessToken almacenado en localStorage, o null si no existe. */
@@ -103,6 +115,7 @@ export class AuthService {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     this.isAuthenticated.set(false);
+    this.currentUser.set(null);
   }
 
   // --- Métodos privados ---
@@ -112,11 +125,31 @@ export class AuthService {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
     this.isAuthenticated.set(true);
+    this.currentUser.set(this.decodeJwt(tokens.accessToken));
   }
 
   /** Verifica si existe un accessToken válido (no vacío) en localStorage. */
   private hasValidToken(): boolean {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     return token !== null && token.length > 0;
+  }
+
+  /**
+   * Decodifica el payload de un JWT usando atob().
+   * Retorna null ante cualquier error (fail-closed).
+   */
+  private decodeJwt(token: string | null): CurrentUser | null {
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (!payload.role) return null;
+      return {
+        id: payload.sub ?? payload.id,
+        email: payload.email,
+        role: payload.role,
+      };
+    } catch {
+      return null;
+    }
   }
 }
