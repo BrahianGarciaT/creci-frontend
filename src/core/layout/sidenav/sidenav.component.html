@@ -1,0 +1,43 @@
+<div class="sidenav-container">
+  <mat-nav-list class="nav-list">
+    @for (item of navItems(); track item.route) {
+      @if (item.disabled) {
+        <mat-list-item class="nav-item nav-item--disabled" disabled>
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </mat-list-item>
+      } @else {
+        <mat-list-item
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="nav-item--active"
+          [routerLinkActiveOptions]="{ exact: false }"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </mat-list-item>
+      }
+    }
+  </mat-nav-list>
+
+  <div class="sidenav-footer">
+    <mat-divider />
+
+    @if (currentUser()) {
+      <div class="user-info">
+        <span class="user-email">{{ currentUser()!.email }}</span>
+        <span class="user-role">{{ currentUser()!.role }}</span>
+      </div>
+    }
+
+    <button
+      mat-stroked-button
+      class="logout-button"
+      (click)="onLogout()"
+      aria-label="Cerrar sesión"
+    >
+      <mat-icon>logout</mat-icon>
+      Cerrar sesión
+    </button>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+<mat-sidenav-container class="shell-container">
+  <mat-sidenav mode="side" [opened]="true" class="shell-sidenav">
+    <app-sidenav
+      [navItems]="visibleNavItems()"
+      [currentUser]="currentUser()"
+      (logout)="onLogout()"
+    />
+  </mat-sidenav>
+
+  <mat-sidenav-content class="shell-content">
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>

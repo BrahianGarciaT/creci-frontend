@@ -117,7 +117,9 @@ describe('authInterceptor', () => {
     localStorage.setItem('accessToken', 'expired-access');
     localStorage.setItem('refreshToken', 'expired-refresh');
 
-    const logoutSpy = vi.spyOn(authService, 'logout').mockImplementation(() => {});
+    const logoutSpy = vi.spyOn(authService, 'logout').mockImplementation(() => {
+      authService.clearTokens();
+    });
     let errorReceived = false;
 
     httpClient.get(`${environment.apiUrl}/api/protected`).subscribe({

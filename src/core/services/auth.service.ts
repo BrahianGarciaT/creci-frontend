@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, of, shareReplay, tap } from 'rxjs';
+import { Observable, shareReplay, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 // Contratos de la API de autenticación
@@ -19,7 +19,7 @@ interface AuthTokens {
 export interface CurrentUser {
   id: string;
   email: string;
-  role: string;
+  role: 'admin' | 'developer';
 }
 
 // Claves de localStorage para los tokens JWT
@@ -85,7 +85,7 @@ export class AuthService {
    * Cierra sesión: limpia tokens locales y navega a /login.
    * La llamada al backend es best-effort (fire-and-forget).
    */
-  logout(): Observable<void> {
+  logout(): void {
     const accessToken = this.getAccessToken();
 
     // Notifica al backend best-effort — no bloqueamos la navegación
@@ -97,7 +97,6 @@ export class AuthService {
 
     this.clearTokens();
     this.router.navigate(['/login']);
-    return of(undefined);
   }
 
   /** Devuelve el accessToken almacenado en localStorage, o null si no existe. */

@@ -45,7 +45,7 @@ export class CreateUserDialogComponent {
       nonNullable: true,
       validators: [Validators.required, Validators.minLength(8)],
     }),
-    role: new FormControl('developer', {
+    role: new FormControl<'admin' | 'developer'>('developer', {
       nonNullable: true,
     }),
   });

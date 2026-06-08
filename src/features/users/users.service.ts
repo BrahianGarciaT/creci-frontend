@@ -7,7 +7,7 @@ import { environment } from '../../environments/environment';
 export interface User {
   id: string;
   email: string;
-  role: string;
+  role: 'admin' | 'developer';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -17,7 +17,7 @@ export interface User {
 export interface CreateUserPayload {
   email: string;
   password: string;
-  role?: string;
+  role?: 'admin' | 'developer';
 }
 
 @Injectable({ providedIn: 'root' })
