@@ -28,6 +28,8 @@ describe('CreateProjectDialogComponent', () => {
   let fixture: ComponentFixture<CreateProjectDialogComponent>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+
     await TestBed.configureTestingModule({
       imports: [CreateProjectDialogComponent, NoopAnimationsModule],
       providers: [

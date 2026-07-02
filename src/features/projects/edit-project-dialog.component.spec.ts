@@ -31,6 +31,8 @@ describe('EditProjectDialogComponent', () => {
   let fixture: ComponentFixture<EditProjectDialogComponent>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+
     await TestBed.configureTestingModule({
       imports: [EditProjectDialogComponent, NoopAnimationsModule],
       providers: [

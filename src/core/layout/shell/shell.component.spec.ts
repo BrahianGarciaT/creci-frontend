@@ -57,11 +57,11 @@ describe('ShellComponent', () => {
       expect(screen.queryByText('Usuarios')).toBeNull();
     });
 
-    it('ambos roles deben ver Dashboard, Proyectos y Tareas', async () => {
+    it('un usuario developer debe ver Dashboard y Tareas, pero NO Proyectos', async () => {
       await render(ShellComponent, buildRenderOptions(developerUser));
 
       expect(screen.getByText('Dashboard')).toBeTruthy();
-      expect(screen.getByText('Proyectos')).toBeTruthy();
+      expect(screen.queryByText('Proyectos')).toBeNull();
       expect(screen.getByText('Tareas')).toBeTruthy();
     });
   });

@@ -60,6 +60,8 @@ describe('AssignDevelopersDialogComponent', () => {
   let fixture: ComponentFixture<AssignDevelopersDialogComponent>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+
     await TestBed.configureTestingModule({
       imports: [AssignDevelopersDialogComponent, NoopAnimationsModule],
       providers: [
