@@ -1,0 +1,151 @@
+<div class="projects-page">
+  <!-- Encabezado con título y botón de acción -->
+  <div class="projects-header">
+    <h1 class="projects-title">Proyectos</h1>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="openCreateDialog()"
+      aria-label="Nuevo proyecto"
+    >
+      <mat-icon>add</mat-icon>
+      Nuevo proyecto
+    </button>
+  </div>
+
+  <!-- Banner de error de mutaciones (deactivate) -->
+  @if (mutationError()) {
+    <div class="projects-error" role="alert" aria-live="polite">
+      <mat-icon class="projects-error__icon">error_outline</mat-icon>
+      <span>{{ mutationError() }}</span>
+    </div>
+  }
+
+  <!-- Estado de carga -->
+  @if (projectsResource.isLoading()) {
+    <div class="projects-loading" aria-label="Cargando proyectos">
+      <mat-spinner diameter="40" />
+    </div>
+  }
+
+  <!-- Estado de error al cargar la lista -->
+  @if (projectsResource.error()) {
+    <div class="projects-error" role="alert">
+      <mat-icon class="projects-error__icon">error_outline</mat-icon>
+      <span>Error al cargar los proyectos. Intenta nuevamente.</span>
+    </div>
+  }
+
+  <!-- Tabla de proyectos -->
+  @if (!projectsResource.isLoading() && !projectsResource.error()) {
+    @if ((projectsResource.value() ?? []).length === 0) {
+      <!-- Estado vacío -->
+      <div class="projects-empty" aria-label="Sin proyectos">
+        <mat-icon class="projects-empty__icon">folder_open</mat-icon>
+        <p class="projects-empty__text">No hay proyectos registrados. Crea el primero.</p>
+      </div>
+    } @else {
+      <mat-table [dataSource]="projectsResource.value() ?? []" class="projects-table" aria-label="Tabla de proyectos">
+        <!-- Columna nombre -->
+        <ng-container matColumnDef="name">
+          <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
+          <mat-cell *matCellDef="let row">{{ row.name }}</mat-cell>
+        </ng-container>
+
+        <!-- Columna descripción -->
+        <ng-container matColumnDef="description">
+          <mat-header-cell *matHeaderCellDef>Descripción</mat-header-cell>
+          <mat-cell *matCellDef="let row">{{ row.description || '—' }}</mat-cell>
+        </ng-container>
+
+        <!-- Columna estado -->
+        <ng-container matColumnDef="status">
+          <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            <span
+              class="status-badge"
+              [class.status-badge--active]="row.status === 'active'"
+              [class.status-badge--inactive]="row.status === 'inactive'"
+            >
+              {{ row.status === 'active' ? 'Activo' : 'Inactivo' }}
+            </span>
+          </mat-cell>
+        </ng-container>
+
+        <!-- Columna desarrolladores -->
+        <ng-container matColumnDef="developers">
+          <mat-header-cell *matHeaderCellDef>Desarrolladores</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            <span class="dev-count">{{ row.developers.length }}</span>
+          </mat-cell>
+        </ng-container>
+
+        <!-- Columna acciones -->
+        <ng-container matColumnDef="actions">
+          <mat-header-cell *matHeaderCellDef>Acciones</mat-header-cell>
+          <mat-cell *matCellDef="let row">
+            @if (pendingDeactivateId() === row.id) {
+              <!-- Confirmación inline de desactivación -->
+              <div class="deactivate-confirm">
+                <span class="deactivate-confirm__label">¿Desactivar "{{ row.name }}"?</span>
+                <button
+                  mat-button
+                  color="warn"
+                  (click)="confirmDeactivate(row.id)"
+                  [attr.aria-label]="'Confirmar desactivación de ' + row.name"
+                >
+                  Confirmar
+                </button>
+                <button
+                  mat-button
+                  (click)="cancelDeactivate()"
+                  [attr.aria-label]="'Cancelar desactivación de ' + row.name"
+                >
+                  Cancelar
+                </button>
+              </div>
+            } @else {
+              <div class="action-buttons">
+                <!-- Editar proyecto -->
+                <button
+                  mat-icon-button
+                  (click)="openEditDialog(row)"
+                  [attr.aria-label]="'Editar ' + row.name"
+                  matTooltip="Editar proyecto"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+
+                <!-- Asignar desarrolladores -->
+                <button
+                  mat-icon-button
+                  (click)="openAssignDialog(row)"
+                  [attr.aria-label]="'Asignar desarrolladores a ' + row.name"
+                  matTooltip="Asignar desarrolladores"
+                >
+                  <mat-icon>group_add</mat-icon>
+                </button>
+
+                <!-- Desactivar proyecto (solo si está activo) -->
+                @if (row.status === 'active') {
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="requestDeactivate(row.id)"
+                    [attr.aria-label]="'Desactivar ' + row.name"
+                    matTooltip="Desactivar proyecto"
+                  >
+                    <mat-icon>block</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </mat-cell>
+        </ng-container>
+
+        <mat-header-row *matHeaderRowDef="displayedColumns" />
+        <mat-row *matRowDef="let row; columns: displayedColumns" />
+      </mat-table>
+    }
+  }
+</div>
