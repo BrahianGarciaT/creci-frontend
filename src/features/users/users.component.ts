@@ -28,7 +28,10 @@ export class UsersComponent {
   // ID del usuario pendiente de confirmar desactivación (null = ninguno)
   readonly pendingDeactivateId = signal<string | null>(null);
 
-  // Mensaje de error de mutaciones (deactivate) — independiente del recurso
+  // ID del usuario pendiente de confirmar reactivación (null = ninguno)
+  readonly pendingReactivateId = signal<string | null>(null);
+
+  // Mensaje de error de mutaciones (deactivate/reactivate) — independiente del recurso
   readonly mutationError = signal<string | null>(null);
 
   /** Abre el diálogo de creación y recarga la lista si se creó un usuario. */
@@ -64,8 +67,33 @@ export class UsersComponent {
         this.pendingDeactivateId.set(null);
       },
       error: () => {
-        this.mutationError.set('Error al desactivar el usuario. Intentá nuevamente.');
+        this.mutationError.set('Error al desactivar el usuario. Intenta nuevamente.');
         this.pendingDeactivateId.set(null);
+      },
+    });
+  }
+
+  /** Marca un usuario como "pendiente de confirmar reactivación". */
+  requestReactivate(id: string): void {
+    this.mutationError.set(null);
+    this.pendingReactivateId.set(id);
+  }
+
+  /** Cancela el paso de confirmación de reactivación. */
+  cancelReactivate(): void {
+    this.pendingReactivateId.set(null);
+  }
+
+  /** Confirma y ejecuta la reactivación del usuario indicado. */
+  confirmReactivate(id: string): void {
+    this.usersService.reactivate(id).subscribe({
+      next: () => {
+        this.usersResource.reload();
+        this.pendingReactivateId.set(null);
+      },
+      error: () => {
+        this.mutationError.set('Error al reactivar el usuario. Intenta nuevamente.');
+        this.pendingReactivateId.set(null);
       },
     });
   }

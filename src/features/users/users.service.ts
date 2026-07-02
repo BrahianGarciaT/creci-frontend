@@ -43,4 +43,12 @@ export class UsersService {
   deactivate(id: string): Observable<User> {
     return this.http.patch<User>(`${this.apiUrl}/users/${id}/deactivate`, {});
   }
+
+  /**
+   * Reactiva un usuario por su ID.
+   * Retorna el usuario actualizado según la respuesta del backend.
+   */
+  reactivate(id: string): Observable<User> {
+    return this.http.patch<User>(`${this.apiUrl}/users/${id}/reactivate`, {});
+  }
 }

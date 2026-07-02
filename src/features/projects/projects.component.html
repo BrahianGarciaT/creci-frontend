@@ -104,6 +104,26 @@
                   Cancelar
                 </button>
               </div>
+            } @else if (pendingReactivateId() === row.id) {
+              <!-- Confirmación inline de reactivación -->
+              <div class="deactivate-confirm">
+                <span class="deactivate-confirm__label">¿Reactivar "{{ row.name }}"?</span>
+                <button
+                  mat-button
+                  color="primary"
+                  (click)="confirmReactivate(row.id)"
+                  [attr.aria-label]="'Confirmar reactivación de ' + row.name"
+                >
+                  Confirmar
+                </button>
+                <button
+                  mat-button
+                  (click)="cancelReactivate()"
+                  [attr.aria-label]="'Cancelar reactivación de ' + row.name"
+                >
+                  Cancelar
+                </button>
+              </div>
             } @else {
               <div class="action-buttons">
                 <!-- Editar proyecto -->
@@ -136,6 +156,19 @@
                     matTooltip="Desactivar proyecto"
                   >
                     <mat-icon>block</mat-icon>
+                  </button>
+                }
+
+                <!-- Reactivar proyecto (solo si está inactivo) -->
+                @if (row.status === 'inactive') {
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="requestReactivate(row.id)"
+                    [attr.aria-label]="'Reactivar ' + row.name"
+                    matTooltip="Reactivar proyecto"
+                  >
+                    <mat-icon>check_circle</mat-icon>
                   </button>
                 }
               </div>

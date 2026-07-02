@@ -65,6 +65,14 @@ export class ProjectsService {
   }
 
   /**
+   * Reactiva un proyecto por su ID (soft-reactivate).
+   * Retorna el proyecto actualizado según la respuesta del backend.
+   */
+  reactivateProject(id: string): Observable<Project> {
+    return this.http.patch<Project>(`${this.apiUrl}/projects/${id}/reactivate`, {});
+  }
+
+  /**
    * Reemplaza la lista completa de desarrolladores asignados al proyecto.
    * Retorna el proyecto actualizado con la nueva lista de desarrolladores.
    */

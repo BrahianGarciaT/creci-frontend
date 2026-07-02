@@ -37,6 +37,9 @@ export class ProjectsComponent {
   // ID del proyecto pendiente de confirmar desactivación (null = ninguno)
   readonly pendingDeactivateId = signal<string | null>(null);
 
+  // ID del proyecto pendiente de confirmar reactivación (null = ninguno)
+  readonly pendingReactivateId = signal<string | null>(null);
+
   // Mensaje de error de mutaciones — independiente del recurso
   readonly mutationError = signal<string | null>(null);
 
@@ -109,6 +112,35 @@ export class ProjectsComponent {
             : 'Error al desactivar el proyecto. Intenta nuevamente.';
         this.mutationError.set(message);
         this.pendingDeactivateId.set(null);
+      },
+    });
+  }
+
+  /** Marca un proyecto como "pendiente de confirmar reactivación". */
+  requestReactivate(id: string): void {
+    this.mutationError.set(null);
+    this.pendingReactivateId.set(id);
+  }
+
+  /** Cancela el paso de confirmación de reactivación. */
+  cancelReactivate(): void {
+    this.pendingReactivateId.set(null);
+  }
+
+  /** Confirma y ejecuta la reactivación del proyecto indicado. */
+  confirmReactivate(id: string): void {
+    this.projectsService.reactivateProject(id).subscribe({
+      next: () => {
+        this.projectsResource.reload();
+        this.pendingReactivateId.set(null);
+      },
+      error: (err) => {
+        const message =
+          err?.status === 400
+            ? 'El proyecto ya está activo.'
+            : 'Error al reactivar el proyecto. Intenta nuevamente.';
+        this.mutationError.set(message);
+        this.pendingReactivateId.set(null);
       },
     });
   }
