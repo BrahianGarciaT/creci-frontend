@@ -1,0 +1,332 @@
+<div class="tasks-page">
+  <!-- Encabezado con título y botón de acción (solo admin) -->
+  <div class="tasks-header">
+    <h1 class="tasks-title">Tareas</h1>
+    @if (isAdmin()) {
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="openCreateDialog()"
+        aria-label="Nueva tarea"
+      >
+        <mat-icon>add</mat-icon>
+        Nueva tarea
+      </button>
+    }
+  </div>
+
+  <!-- Selector de proyecto para desarrolladores -->
+  @if (!isAdmin()) {
+    <div class="tasks-project-selector">
+      <mat-select
+        [value]="selectedProjectId()"
+        (valueChange)="selectedProjectId.set($event)"
+        placeholder="Selecciona un proyecto"
+        aria-label="Seleccionar proyecto"
+        class="tasks-project-select"
+      >
+        @for (project of developerProjects(); track project.id) {
+          <mat-option [value]="project.id">{{ project.name }}</mat-option>
+        }
+      </mat-select>
+    </div>
+  }
+
+  <!-- Banner de error de mutaciones -->
+  @if (mutationError()) {
+    <div class="tasks-error" role="alert" aria-live="polite">
+      <mat-icon class="tasks-error__icon">error_outline</mat-icon>
+      <span>{{ mutationError() }}</span>
+    </div>
+  }
+
+  <!-- ===== VISTA ADMIN ===== -->
+  @if (isAdmin()) {
+    <!-- Estado de carga -->
+    @if (allTasksResource.isLoading()) {
+      <div class="tasks-loading" aria-label="Cargando tareas">
+        <mat-spinner diameter="40" />
+      </div>
+    }
+
+    <!-- Error al cargar la lista -->
+    @if (allTasksResource.error()) {
+      <div class="tasks-error" role="alert">
+        <mat-icon class="tasks-error__icon">error_outline</mat-icon>
+        <span>Error al cargar las tareas. Intenta nuevamente.</span>
+      </div>
+    }
+
+    <!-- Tabla de tareas (admin) -->
+    @if (!allTasksResource.isLoading() && !allTasksResource.error()) {
+      @if ((allTasksResource.value() ?? []).length === 0) {
+        <div class="tasks-empty" aria-label="Sin tareas">
+          <mat-icon class="tasks-empty__icon">checklist</mat-icon>
+          <p class="tasks-empty__text">No hay tareas registradas. Crea la primera.</p>
+        </div>
+      } @else {
+        <mat-table
+          [dataSource]="allTasksResource.value() ?? []"
+          class="tasks-table"
+          aria-label="Tabla de tareas"
+        >
+          <!-- Columna título -->
+          <ng-container matColumnDef="title">
+            <mat-header-cell *matHeaderCellDef>Título</mat-header-cell>
+            <mat-cell *matCellDef="let row">{{ row.title }}</mat-cell>
+          </ng-container>
+
+          <!-- Columna prioridad -->
+          <ng-container matColumnDef="priority">
+            <mat-header-cell *matHeaderCellDef>Prioridad</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              <span
+                class="priority-badge"
+                [class.priority-badge--high]="row.priority === 'high'"
+                [class.priority-badge--medium]="row.priority === 'medium'"
+                [class.priority-badge--low]="row.priority === 'low'"
+              >
+                {{ row.priority === 'high' ? 'Alta' : row.priority === 'medium' ? 'Media' : 'Baja' }}
+              </span>
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna estado -->
+          <ng-container matColumnDef="status">
+            <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              <span
+                class="status-badge"
+                [class.status-badge--todo]="row.status === 'todo'"
+                [class.status-badge--in-progress]="row.status === 'in_progress'"
+                [class.status-badge--done]="row.status === 'done'"
+                [class.status-badge--cancelled]="row.status === 'cancelled'"
+              >
+                {{ row.status === 'todo' ? 'Pendiente'
+                  : row.status === 'in_progress' ? 'En progreso'
+                  : row.status === 'done' ? 'Completada'
+                  : 'Cancelada' }}
+              </span>
+            </mat-cell>
+          </ng-container>
+
+          <!-- Columna proyecto -->
+          <ng-container matColumnDef="project">
+            <mat-header-cell *matHeaderCellDef>Proyecto</mat-header-cell>
+            <mat-cell *matCellDef="let row">{{ row.project?.name || '—' }}</mat-cell>
+          </ng-container>
+
+          <!-- Columna asignado -->
+          <ng-container matColumnDef="assignee">
+            <mat-header-cell *matHeaderCellDef>Asignado a</mat-header-cell>
+            <mat-cell *matCellDef="let row">{{ row.assignee?.email || '—' }}</mat-cell>
+          </ng-container>
+
+          <!-- Columna acciones (admin) -->
+          <ng-container matColumnDef="actions">
+            <mat-header-cell *matHeaderCellDef>Acciones</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              @if (pendingCancelId() === row.id) {
+                <!-- Confirmación inline de cancelación -->
+                <div class="cancel-confirm">
+                  <span class="cancel-confirm__label">¿Cancelar "{{ row.title }}"?</span>
+                  <button
+                    mat-button
+                    color="warn"
+                    (click)="confirmCancel(row.id)"
+                    [attr.aria-label]="'Confirmar cancelación de ' + row.title"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    mat-button
+                    (click)="cancelConfirm()"
+                    [attr.aria-label]="'Cancelar acción sobre ' + row.title"
+                  >
+                    No
+                  </button>
+                </div>
+              } @else {
+                <div class="action-buttons">
+                  <!-- Editar tarea -->
+                  <button
+                    mat-icon-button
+                    (click)="openEditDialog(row)"
+                    [attr.aria-label]="'Editar ' + row.title"
+                    matTooltip="Editar tarea"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+
+                  <!-- Cancelar tarea (solo si no está ya cancelada) -->
+                  @if (row.status !== 'cancelled') {
+                    <button
+                      mat-icon-button
+                      color="warn"
+                      (click)="requestCancel(row.id)"
+                      [attr.aria-label]="'Cancelar tarea ' + row.title"
+                      matTooltip="Cancelar tarea"
+                    >
+                      <mat-icon>cancel</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
+            </mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="adminColumns" />
+          <mat-row *matRowDef="let row; columns: adminColumns" />
+        </mat-table>
+      }
+    }
+  }
+
+  <!-- ===== VISTA DESARROLLADOR ===== -->
+  @if (!isAdmin()) {
+    <!-- Mensaje para seleccionar proyecto -->
+    @if (!selectedProjectId()) {
+      <div class="tasks-empty" aria-label="Selecciona un proyecto">
+        <mat-icon class="tasks-empty__icon">folder_open</mat-icon>
+        <p class="tasks-empty__text">Selecciona un proyecto para ver sus tareas.</p>
+      </div>
+    }
+
+    <!-- Sin proyectos asignados -->
+    @if (!selectedProjectId() && developerProjects().length === 0 && !projectsResource.isLoading()) {
+      <div class="tasks-empty" aria-label="Sin proyectos">
+        <mat-icon class="tasks-empty__icon">inbox</mat-icon>
+        <p class="tasks-empty__text">No estás asignado a ningún proyecto.</p>
+      </div>
+    }
+
+    @if (selectedProjectId()) {
+      <!-- Estado de carga -->
+      @if (developerTasksResource.isLoading()) {
+        <div class="tasks-loading" aria-label="Cargando tareas">
+          <mat-spinner diameter="40" />
+        </div>
+      }
+
+      <!-- Error al cargar la lista del desarrollador -->
+      @if (developerTasksResource.error()) {
+        <div class="tasks-error" role="alert">
+          <mat-icon class="tasks-error__icon">error_outline</mat-icon>
+          <span>Error al cargar las tareas del proyecto. Intenta nuevamente.</span>
+        </div>
+      }
+
+      <!-- Tabla de tareas (desarrollador) -->
+      @if (!developerTasksResource.isLoading() && !developerTasksResource.error()) {
+        @if ((developerTasksResource.value() ?? []).length === 0) {
+          <div class="tasks-empty" aria-label="Sin tareas en el proyecto">
+            <mat-icon class="tasks-empty__icon">checklist</mat-icon>
+            <p class="tasks-empty__text">No hay tareas en este proyecto.</p>
+          </div>
+        } @else {
+          <mat-table
+            [dataSource]="developerTasksResource.value() ?? []"
+            class="tasks-table"
+            aria-label="Tabla de tareas del proyecto"
+          >
+            <!-- Columna título -->
+            <ng-container matColumnDef="title">
+              <mat-header-cell *matHeaderCellDef>Título</mat-header-cell>
+              <mat-cell *matCellDef="let row">{{ row.title }}</mat-cell>
+            </ng-container>
+
+            <!-- Columna prioridad -->
+            <ng-container matColumnDef="priority">
+              <mat-header-cell *matHeaderCellDef>Prioridad</mat-header-cell>
+              <mat-cell *matCellDef="let row">
+                <span
+                  class="priority-badge"
+                  [class.priority-badge--high]="row.priority === 'high'"
+                  [class.priority-badge--medium]="row.priority === 'medium'"
+                  [class.priority-badge--low]="row.priority === 'low'"
+                >
+                  {{ row.priority === 'high' ? 'Alta' : row.priority === 'medium' ? 'Media' : 'Baja' }}
+                </span>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Columna estado -->
+            <ng-container matColumnDef="status">
+              <mat-header-cell *matHeaderCellDef>Estado</mat-header-cell>
+              <mat-cell *matCellDef="let row">
+                <span
+                  class="status-badge"
+                  [class.status-badge--todo]="row.status === 'todo'"
+                  [class.status-badge--in-progress]="row.status === 'in_progress'"
+                  [class.status-badge--done]="row.status === 'done'"
+                >
+                  {{ row.status === 'todo' ? 'Pendiente'
+                    : row.status === 'in_progress' ? 'En progreso'
+                    : 'Completada' }}
+                </span>
+              </mat-cell>
+            </ng-container>
+
+            <!-- Columna proyecto -->
+            <ng-container matColumnDef="project">
+              <mat-header-cell *matHeaderCellDef>Proyecto</mat-header-cell>
+              <mat-cell *matCellDef="let row">{{ row.project?.name || '—' }}</mat-cell>
+            </ng-container>
+
+            <!-- Columna asignado -->
+            <ng-container matColumnDef="assignee">
+              <mat-header-cell *matHeaderCellDef>Asignado a</mat-header-cell>
+              <mat-cell *matCellDef="let row">{{ row.assignee?.email || '—' }}</mat-cell>
+            </ng-container>
+
+            <!-- Columna acción de estado (desarrollador) -->
+            <ng-container matColumnDef="statusAction">
+              <mat-header-cell *matHeaderCellDef>Cambiar estado</mat-header-cell>
+              <mat-cell *matCellDef="let row">
+                @if (isOwnTask(row)) {
+                  <mat-select
+                    [value]="row.status"
+                    (valueChange)="updateTaskStatus(row, $event)"
+                    aria-label="Cambiar estado de la tarea"
+                    class="status-select"
+                  >
+                    <mat-option value="todo">Pendiente</mat-option>
+                    <mat-option value="in_progress">En progreso</mat-option>
+                    <mat-option value="done">Completada</mat-option>
+                  </mat-select>
+                } @else {
+                  <span class="tasks-muted" aria-label="No asignada a ti">—</span>
+                }
+              </mat-cell>
+            </ng-container>
+
+            <!-- Columna acción de estimación (desarrollador) -->
+            <ng-container matColumnDef="estimateAction">
+              <mat-header-cell *matHeaderCellDef>Horas estimadas</mat-header-cell>
+              <mat-cell *matCellDef="let row">
+                @if (isOwnTask(row)) {
+                  <div class="estimate-input-wrap">
+                    <input
+                      type="number"
+                      [value]="row.estimatedHours ?? ''"
+                      min="0.5"
+                      step="0.5"
+                      class="estimate-input"
+                      aria-label="Horas estimadas"
+                      (change)="updateTaskEstimate(row, +($event.target)!['value'])"
+                    />
+                  </div>
+                } @else {
+                  <span class="tasks-muted">{{ row.estimatedHours ?? '—' }}</span>
+                }
+              </mat-cell>
+            </ng-container>
+
+            <mat-header-row *matHeaderRowDef="developerColumns" />
+            <mat-row *matRowDef="let row; columns: developerColumns" />
+          </mat-table>
+        }
+      }
+    }
+  }
+</div>

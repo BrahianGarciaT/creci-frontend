@@ -22,6 +22,5 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Tareas',
     icon: 'checklist',
     route: '/tasks',
-    disabled: true,
   },
 ];
