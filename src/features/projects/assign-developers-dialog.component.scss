@@ -1,0 +1,49 @@
+// Subtítulo del diálogo — nombre del proyecto
+.dialog-subtitle {
+  margin: -0.5rem 0 0;
+  padding: 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--app-muted, #9aa0aa);
+}
+
+// Formulario del diálogo — layout de columna
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  min-width: 380px;
+}
+
+// Campo de formulario: ancho completo
+.dialog-field {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+// Estado de carga centrado
+.dialog-loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+  min-width: 380px;
+}
+
+// Banner de error — rojo translúcido, NO cierra el diálogo
+.dialog-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(244, 67, 54, 0.12);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  color: #ef9a9a;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+
+  &__icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+  }
+}

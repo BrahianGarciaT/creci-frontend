@@ -1,0 +1,61 @@
+<h2 mat-dialog-title>Asignar desarrolladores</h2>
+<p class="dialog-subtitle">Proyecto: <strong>{{ project.name }}</strong></p>
+
+<mat-dialog-content>
+  <!-- Estado de carga de usuarios -->
+  @if (isLoadingUsers()) {
+    <div class="dialog-loading" aria-label="Cargando desarrolladores disponibles">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else {
+    <form
+      (ngSubmit)="submit()"
+      novalidate
+      aria-label="Formulario de asignación de desarrolladores"
+      class="dialog-form"
+    >
+      <!-- Selector múltiple de desarrolladores -->
+      <mat-form-field appearance="outline" class="dialog-field">
+        <mat-label>Desarrolladores asignados</mat-label>
+        <mat-select
+          [formControl]="developersControl"
+          multiple
+          aria-label="Seleccionar desarrolladores"
+        >
+          @for (dev of availableDevelopers(); track dev.id) {
+            <mat-option [value]="dev.id">{{ dev.email }}</mat-option>
+          } @empty {
+            <mat-option disabled>No hay desarrolladores activos disponibles</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Selecciona uno o más desarrolladores. Dejar vacío para quitar todos.</mat-hint>
+      </mat-form-field>
+
+      <!-- Banner de error — visible sin cerrar el diálogo -->
+      @if (errorMessage()) {
+        <div class="dialog-error" role="alert" aria-live="polite">
+          <mat-icon class="dialog-error__icon">error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+    </form>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-button mat-dialog-close aria-label="Cancelar">Cancelar</button>
+  <button
+    type="submit"
+    mat-raised-button
+    color="primary"
+    [disabled]="isSubmitting() || isLoadingUsers()"
+    (click)="submit()"
+    aria-label="Guardar asignación"
+  >
+    @if (isSubmitting()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      Guardar
+    }
+  </button>
+</mat-dialog-actions>

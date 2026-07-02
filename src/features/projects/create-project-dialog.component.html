@@ -1,0 +1,64 @@
+<h2 mat-dialog-title>Nuevo proyecto</h2>
+
+<mat-dialog-content>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    novalidate
+    aria-label="Formulario de creación de proyecto"
+    class="dialog-form"
+  >
+    <!-- Campo nombre -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Nombre</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+        aria-label="Nombre del proyecto"
+        aria-required="true"
+      />
+      @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+        <mat-error>El nombre es requerido</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Campo descripción (opcional) -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Descripción (opcional)</mat-label>
+      <textarea
+        matInput
+        formControlName="description"
+        rows="3"
+        aria-label="Descripción del proyecto"
+      ></textarea>
+    </mat-form-field>
+
+    <!-- Banner de error genérico -->
+    @if (errorMessage()) {
+      <div class="dialog-error" role="alert" aria-live="polite">
+        <mat-icon class="dialog-error__icon">error_outline</mat-icon>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-button mat-dialog-close aria-label="Cancelar">Cancelar</button>
+  <button
+    type="submit"
+    mat-raised-button
+    color="primary"
+    [disabled]="form.invalid || isSubmitting()"
+    (click)="submit()"
+    aria-label="Crear proyecto"
+  >
+    @if (isSubmitting()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      Crear
+    }
+  </button>
+</mat-dialog-actions>
