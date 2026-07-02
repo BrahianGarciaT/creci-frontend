@@ -33,6 +33,12 @@ export const routes: Routes = [
         loadChildren: () =>
           import('../features/users/users.routes').then((m) => m.USERS_ROUTES),
       },
+      {
+        path: 'projects',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('../features/projects/projects.routes').then((m) => m.PROJECTS_ROUTES),
+      },
     ],
   },
 ];

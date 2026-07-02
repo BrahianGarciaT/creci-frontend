@@ -16,7 +16,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Proyectos',
     icon: 'folder',
     route: '/projects',
-    disabled: true,
+    requiredRole: 'admin',
   },
   {
     label: 'Tareas',
