@@ -188,12 +188,13 @@ export interface EditTaskDialogData {
       font-size: 0.875rem;
       margin-top: 0.5rem;
 
-      &__icon {
-        font-size: 1.1rem;
-        width: 1.1rem;
-        height: 1.1rem;
-        flex-shrink: 0;
-      }
+    }
+
+    .dialog-error__icon {
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      flex-shrink: 0;
     }
   `],
 })
