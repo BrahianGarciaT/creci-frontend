@@ -14,8 +14,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
-import { ProjectsService } from '../projects/projects.service';
-import { UsersService } from '../users/users.service';
+import { Project } from '../projects/projects.service';
+import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
 import { Task, TasksService, TaskStatus, UpdateEstimatePayload, UpdateStatusPayload } from './tasks.service';
 import {
@@ -45,9 +45,8 @@ import {
 export class TasksComponent {
   private readonly authService = inject(AuthService);
   private readonly tasksService = inject(TasksService);
-  private readonly projectsService = inject(ProjectsService);
-  private readonly usersService = inject(UsersService);
   private readonly dialog = inject(MatDialog);
+  private readonly apiUrl = environment.apiUrl;
 
   // Usuario autenticado actual
   readonly currentUser = this.authService.currentUser;
@@ -55,11 +54,17 @@ export class TasksComponent {
   // Indica si el usuario es administrador
   readonly isAdmin = computed(() => this.currentUser()?.role === 'admin');
 
-  // Recurso reactivo de proyectos (compartido por admin y dev)
-  readonly projectsResource = this.projectsService.projects;
+  // Proyectos: admin carga todos, developer carga solo los suyos
+  readonly projectsResource = httpResource<Project[]>(() =>
+    this.isAdmin()
+      ? { url: `${this.apiUrl}/projects` }
+      : { url: `${this.apiUrl}/projects/mine` }
+  );
 
-  // Recurso reactivo de usuarios (solo admin lo necesita para los diálogos)
-  readonly usersResource = this.usersService.users;
+  // Usuarios: solo el admin los necesita (para los diálogos de asignación)
+  readonly usersResource = httpResource<User[]>(() =>
+    this.isAdmin() ? { url: `${this.apiUrl}/users` } : undefined
+  );
 
   // Recurso reactivo de tareas para el admin (lista completa)
   readonly allTasksResource = this.tasksService.allTasks;
