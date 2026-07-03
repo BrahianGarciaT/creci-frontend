@@ -66,8 +66,10 @@ export class TasksComponent {
     this.isAdmin() ? { url: `${this.apiUrl}/users` } : undefined
   );
 
-  // Recurso reactivo de tareas para el admin (lista completa)
-  readonly allTasksResource = this.tasksService.allTasks;
+  // Recurso reactivo de tareas para el admin (lista completa — solo se dispara si es admin)
+  readonly allTasksResource = httpResource<Task[]>(() =>
+    this.isAdmin() ? { url: `${this.apiUrl}/tasks` } : undefined
+  );
 
   // ID del proyecto seleccionado para la vista de desarrollador
   readonly selectedProjectId = signal<string>('');

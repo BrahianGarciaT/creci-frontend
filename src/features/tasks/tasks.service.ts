@@ -20,8 +20,10 @@ export interface Task {
   priority: TaskPriority;
   dueDate?: string;
   estimatedHours?: number;
-  project: Project;
-  assignee?: User;
+  projectId: string;
+  project: { id: string; name: string } | null;
+  assigneeId: string | null;
+  assignee: { id: string; email: string } | null;
   createdAt: string;
   updatedAt: string;
 }
