@@ -230,7 +230,7 @@ export class EditTaskDialogComponent {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    projectId: new FormControl(this.data.task.project.id, {
+    projectId: new FormControl(this.data.task.project?.id ?? '', {
       nonNullable: true,
       validators: [Validators.required],
     }),
