@@ -1,9 +1,7 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient, httpResource } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { User } from '../users/users.service';
-import { Project } from '../projects/projects.service';
 
 // Estado posible de una tarea
 export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
@@ -65,29 +63,6 @@ export interface UpdateEstimatePayload {
 export class TasksService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
-
-  // Recurso reactivo para la lista completa de tareas (admin) — admite filtro por proyecto
-  readonly allTasks = httpResource<Task[]>(() => ({ url: `${this.apiUrl}/tasks` }));
-
-  /**
-   * Crea un recurso reactivo para tareas filtradas por proyecto (admin).
-   * Se recarga con .reload() en el recurso devuelto.
-   */
-  getByProjectResource(projectId: string) {
-    return httpResource<Task[]>(() => ({
-      url: `${this.apiUrl}/tasks`,
-      params: { projectId },
-    }));
-  }
-
-  /**
-   * Crea un recurso reactivo de tareas del proyecto para el desarrollador autenticado.
-   */
-  getDeveloperProjectResource(projectId: string) {
-    return httpResource<Task[]>(() => ({
-      url: `${this.apiUrl}/tasks/project/${projectId}`,
-    }));
-  }
 
   /**
    * Crea una nueva tarea en el sistema (solo admin).
