@@ -286,4 +286,263 @@ describe('TasksComponent', () => {
       expect(screen.queryByText(/cancelar/i)).toBeNull();
     });
   });
+
+  describe('Indicador de vencimiento (admin)', () => {
+    // "Hoy" fijo para todas las aserciones — medianoche local del 11/08/2026
+    const today = new Date(2026, 7, 11);
+    const yesterday = new Date(2026, 7, 10);
+
+    const overdueScenarioTasks: Task[] = [
+      {
+        id: 'task-overdue',
+        title: 'Tarea vencida',
+        status: 'todo',
+        priority: 'high',
+        dueDate: yesterday.toISOString(),
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'task-due-today',
+        title: 'Tarea de hoy',
+        status: 'todo',
+        priority: 'medium',
+        dueDate: today.toISOString(),
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'task-done-overdue',
+        title: 'Tarea completada vencida',
+        status: 'done',
+        priority: 'low',
+        dueDate: yesterday.toISOString(),
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'task-cancelled-overdue',
+        title: 'Tarea cancelada vencida',
+        status: 'cancelled',
+        priority: 'low',
+        dueDate: yesterday.toISOString(),
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'task-no-due-date',
+        title: 'Tarea sin fecha',
+        status: 'todo',
+        priority: 'low',
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+    ];
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('marca vencidas solo las tareas activas con fecha estrictamente pasada', async () => {
+      vi.setSystemTime(new Date(2026, 7, 11, 10, 0, 0));
+
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks`).flush(overdueScenarioTasks);
+
+      await fixture.whenStable();
+
+      const component = fixture.componentInstance;
+      expect(component.adminColumns).toContain('dueDate');
+
+      // Vencida y activa → vencida
+      expect(component.isOverdue(overdueScenarioTasks[0])).toBe(true);
+      // Vence hoy → NO vencida
+      expect(component.isOverdue(overdueScenarioTasks[1])).toBe(false);
+      // Vencida pero completada → NO vencida
+      expect(component.isOverdue(overdueScenarioTasks[2])).toBe(false);
+      // Vencida pero cancelada → NO vencida
+      expect(component.isOverdue(overdueScenarioTasks[3])).toBe(false);
+      // Sin fecha límite → NO vencida
+      expect(component.isOverdue(overdueScenarioTasks[4])).toBe(false);
+
+      // Badge visual solo en la fecha de la tarea realmente vencida (activa),
+      // no en las de estado "done"/"cancelled" que comparten la misma fecha
+      const dateCells = screen.getAllByText('10/08/2026');
+      const overdueCell = dateCells.find((el) =>
+        el.closest('mat-row')?.textContent?.includes('Tarea vencida'),
+      );
+      expect(overdueCell?.classList.contains('overdue-badge')).toBe(true);
+
+      const nonOverdueCells = dateCells.filter((el) => el !== overdueCell);
+      for (const cell of nonOverdueCells) {
+        expect(cell.classList.contains('overdue-badge')).toBe(false);
+      }
+
+      const dueTodayCell = screen.getByText('11/08/2026');
+      expect(dueTodayCell.classList.contains('overdue-badge')).toBe(false);
+
+      // Tarea sin fecha muestra guion largo
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Filtro de estado y prioridad (admin)', () => {
+    const filterScenarioTasks: Task[] = [
+      {
+        id: 'filter-todo-high',
+        title: 'Todo alta',
+        status: 'todo',
+        priority: 'high',
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'filter-progress-medium',
+        title: 'Progreso media',
+        status: 'in_progress',
+        priority: 'medium',
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'filter-done-low',
+        title: 'Completada baja',
+        status: 'done',
+        priority: 'low',
+        projectId: 'project-1',
+        project: { id: 'project-1', name: 'Proyecto Alpha' },
+        assigneeId: null,
+        assignee: null,
+        createdAt: '',
+        updatedAt: '',
+      },
+    ];
+
+    it('filtra la lista en cliente sin disparar peticiones de red adicionales', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+
+      await fixture.whenStable();
+
+      const component = fixture.componentInstance;
+      expect(component.filteredAdminTasks().length).toBe(3);
+
+      component.statusFilter.set('todo');
+      fixture.detectChanges();
+
+      // httpMock.verify() en afterEach fallaría si el filtro disparase una petición nueva
+      expect(component.filteredAdminTasks().length).toBe(1);
+      expect(screen.getByText('Todo alta')).toBeTruthy();
+      expect(screen.queryByText('Progreso media')).toBeNull();
+    });
+
+    it('muestra un mensaje de "sin resultados" distinto del estado vacío genuino', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+
+      await fixture.whenStable();
+
+      fixture.componentInstance.statusFilter.set('cancelled');
+      fixture.detectChanges();
+
+      expect(
+        screen.getByText('Ningún resultado coincide con los filtros seleccionados.'),
+      ).toBeTruthy();
+      expect(screen.queryByText('No hay tareas registradas. Crea la primera.')).toBeNull();
+    });
+
+    it('mantiene el filtro aplicado tras recargar la lista', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+
+      await fixture.whenStable();
+
+      fixture.componentInstance.priorityFilter.set('high');
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.filteredAdminTasks().length).toBe(1);
+
+      // Simula una recarga (p.ej. tras cerrar un diálogo de edición con resultado)
+      fixture.componentInstance.allTasksResource.reload();
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.priorityFilter()).toBe('high');
+      expect(fixture.componentInstance.filteredAdminTasks().length).toBe(1);
+    });
+  });
 });

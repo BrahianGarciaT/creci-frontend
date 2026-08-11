@@ -65,8 +65,44 @@
           <p class="tasks-empty__text">No hay tareas registradas. Crea la primera.</p>
         </div>
       } @else {
+        <!-- Barra de filtros (solo admin) -->
+        <div class="tasks-filter-bar">
+          <mat-select
+            [value]="statusFilter()"
+            (valueChange)="statusFilter.set($event)"
+            aria-label="Filtrar por estado"
+            class="tasks-filter-select"
+          >
+            <mat-option value="all">Todos los estados</mat-option>
+            <mat-option value="todo">Pendiente</mat-option>
+            <mat-option value="in_progress">En progreso</mat-option>
+            <mat-option value="done">Completada</mat-option>
+            <mat-option value="cancelled">Cancelada</mat-option>
+          </mat-select>
+          <mat-select
+            [value]="priorityFilter()"
+            (valueChange)="priorityFilter.set($event)"
+            aria-label="Filtrar por prioridad"
+            class="tasks-filter-select"
+          >
+            <mat-option value="all">Todas las prioridades</mat-option>
+            <mat-option value="high">Alta</mat-option>
+            <mat-option value="medium">Media</mat-option>
+            <mat-option value="low">Baja</mat-option>
+          </mat-select>
+        </div>
+      }
+
+      @if ((allTasksResource.value() ?? []).length > 0 && filteredAdminTasks().length === 0) {
+        <div class="tasks-empty" aria-label="Sin resultados de filtro">
+          <mat-icon class="tasks-empty__icon">filter_alt_off</mat-icon>
+          <p class="tasks-empty__text">Ningún resultado coincide con los filtros seleccionados.</p>
+        </div>
+      }
+
+      @if (filteredAdminTasks().length > 0) {
         <mat-table
-          [dataSource]="allTasksResource.value() ?? []"
+          [dataSource]="filteredAdminTasks()"
           class="tasks-table"
           aria-label="Tabla de tareas"
         >
@@ -120,6 +156,18 @@
           <ng-container matColumnDef="assignee">
             <mat-header-cell *matHeaderCellDef>Asignado a</mat-header-cell>
             <mat-cell *matCellDef="let row">{{ row.assignee?.email || '—' }}</mat-cell>
+          </ng-container>
+
+          <!-- Columna vencimiento -->
+          <ng-container matColumnDef="dueDate">
+            <mat-header-cell *matHeaderCellDef>Vencimiento</mat-header-cell>
+            <mat-cell *matCellDef="let row">
+              @if (row.dueDate) {
+                <span [class.overdue-badge]="isOverdue(row)">{{ row.dueDate | date: 'dd/MM/yyyy' }}</span>
+              } @else {
+                <span class="tasks-muted">—</span>
+              }
+            </mat-cell>
           </ng-container>
 
           <!-- Columna acciones (admin) -->
