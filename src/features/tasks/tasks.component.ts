@@ -5,6 +5,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -17,7 +18,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
-import { Task, TasksService, TaskStatus, UpdateEstimatePayload, UpdateStatusPayload } from './tasks.service';
+import {
+  Task,
+  TasksService,
+  TaskPriority,
+  TaskStatus,
+  UpdateEstimatePayload,
+  UpdateStatusPayload,
+} from './tasks.service';
 import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
@@ -38,6 +46,7 @@ import {
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
+    DatePipe,
   ],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
@@ -47,6 +56,14 @@ export class TasksComponent {
   private readonly tasksService = inject(TasksService);
   private readonly dialog = inject(MatDialog);
   private readonly apiUrl = environment.apiUrl;
+
+  // Medianoche local capturada en la construcción — hace determinista isOverdue() en tests
+  private readonly todayStart: Date;
+
+  constructor() {
+    const now = new Date();
+    this.todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
 
   // Usuario autenticado actual
   readonly currentUser = this.authService.currentUser;
@@ -83,8 +100,24 @@ export class TasksComponent {
   });
 
   // Columnas de la tabla — varían según el rol
-  readonly adminColumns = ['title', 'priority', 'status', 'project', 'assignee', 'actions'];
+  readonly adminColumns = ['title', 'priority', 'status', 'project', 'assignee', 'dueDate', 'actions'];
   readonly developerColumns = ['title', 'priority', 'status', 'project', 'assignee', 'statusAction', 'estimateAction'];
+
+  // Filtros de la tabla admin (solo cliente, no disparan peticiones de red)
+  readonly statusFilter = signal<TaskStatus | 'all'>('all');
+  readonly priorityFilter = signal<TaskPriority | 'all'>('all');
+
+  // Lista admin filtrada por estado/prioridad
+  readonly filteredAdminTasks = computed<Task[]>(() => {
+    const tasks = this.allTasksResource.value() ?? [];
+    const status = this.statusFilter();
+    const priority = this.priorityFilter();
+    return tasks.filter((task) => {
+      if (status !== 'all' && task.status !== status) return false;
+      if (priority !== 'all' && task.priority !== priority) return false;
+      return true;
+    });
+  });
 
   // ID de la tarea pendiente de cancelación (confirmación inline)
   readonly pendingCancelId = signal<string | null>(null);
@@ -200,5 +233,19 @@ export class TasksComponent {
   /** Verifica si una tarea pertenece al usuario autenticado */
   isOwnTask(task: Task): boolean {
     return task.assignee?.id === this.currentUser()?.id;
+  }
+
+  /**
+   * Indica si una tarea está vencida (solo admin): tiene fecha límite estrictamente
+   * anterior a hoy y su estado no es "done" ni "cancelled". Una tarea que vence hoy
+   * NO se considera vencida.
+   */
+  isOverdue(task: Task): boolean {
+    return (
+      !!task.dueDate &&
+      new Date(task.dueDate) < this.todayStart &&
+      task.status !== 'done' &&
+      task.status !== 'cancelled'
+    );
   }
 }
