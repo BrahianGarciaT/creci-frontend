@@ -335,6 +335,7 @@
                   <mat-select
                     #statusSelect
                     [value]="row.status"
+                    [disabled]="row.status === 'done'"
                     (valueChange)="updateTaskStatus(row, $event, statusSelect)"
                     aria-label="Cambiar estado de la tarea"
                     class="status-select"

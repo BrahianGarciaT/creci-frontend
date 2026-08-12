@@ -96,6 +96,19 @@ const mockDeveloperTasks: Task[] = [
     createdAt: '',
     updatedAt: '',
   },
+  {
+    id: 'task-own-done',
+    title: 'Tarea propia completada',
+    status: 'done',
+    priority: 'medium',
+    estimatedHours: 8,
+    projectId: 'project-1',
+    project: { id: 'project-1', name: 'Proyecto Alpha' },
+    assigneeId: 'dev-1',
+    assignee: { id: 'dev-1', email: 'developer@example.com' },
+    createdAt: '',
+    updatedAt: '',
+  },
 ];
 
 describe('TasksComponent', () => {
@@ -274,9 +287,9 @@ describe('TasksComponent', () => {
       expect(screen.getByText('Tarea propia')).toBeTruthy();
       expect(screen.getByText('Tarea ajena')).toBeTruthy();
 
-      // Tarea propia: acciones interactivas
-      expect(screen.getByLabelText('Cambiar estado de la tarea')).toBeTruthy();
-      expect(screen.getByLabelText('Horas estimadas')).toBeTruthy();
+      // Tarea propia: acciones interactivas (2 tareas propias en este fixture: pendiente y completada)
+      expect(screen.getAllByLabelText('Cambiar estado de la tarea')).toHaveLength(2);
+      expect(screen.getAllByLabelText('Horas estimadas')).toHaveLength(2);
 
       // Tarea ajena: sin acciones, marcador "No asignada a ti"
       expect(screen.getByLabelText('No asignada a ti')).toBeTruthy();
@@ -284,6 +297,13 @@ describe('TasksComponent', () => {
       // Nunca debe existir una opción de cancelar en la vista developer
       expect(screen.queryByRole('button', { name: /cancelar tarea/i })).toBeNull();
       expect(screen.queryByText(/cancelar/i)).toBeNull();
+
+      // Tarea propia ya completada: el dropdown de estado existe pero deshabilitado
+      // (done es terminal — ningún destino de transición es válido desde ahí)
+      const statusSelects = screen.getAllByLabelText('Cambiar estado de la tarea');
+      expect(statusSelects).toHaveLength(2);
+      expect(statusSelects[0].getAttribute('aria-disabled')).not.toBe('true');
+      expect(statusSelects[1].getAttribute('aria-disabled')).toBe('true');
     });
   });
 
