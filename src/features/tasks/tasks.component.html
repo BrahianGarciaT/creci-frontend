@@ -333,8 +333,9 @@
               <mat-cell *matCellDef="let row">
                 @if (isOwnTask(row)) {
                   <mat-select
+                    #statusSelect
                     [value]="row.status"
-                    (valueChange)="updateTaskStatus(row, $event)"
+                    (valueChange)="updateTaskStatus(row, $event, statusSelect)"
                     aria-label="Cambiar estado de la tarea"
                     class="status-select"
                   >

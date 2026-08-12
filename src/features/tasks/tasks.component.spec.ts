@@ -545,4 +545,116 @@ describe('TasksComponent', () => {
       expect(fixture.componentInstance.filteredAdminTasks().length).toBe(1);
     });
   });
+
+  describe('Confirmación de completar tarea (developer)', () => {
+    const ownTask = mockDeveloperTasks[0]; // status: 'todo'
+
+    const setupDeveloperView = async (mockDialog: {
+      open: ReturnType<typeof vi.fn>;
+    }) => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+          { provide: MatDialog, useValue: mockDialog },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects/mine`).flush(mockProjects);
+      await fixture.whenStable();
+
+      fixture.componentInstance.selectedProjectId.set('project-1');
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1`).flush(mockDeveloperTasks);
+      await fixture.whenStable();
+
+      return fixture;
+    };
+
+    it('abre el diálogo de confirmación y envía la actualización cuando el desarrollador confirma', async () => {
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(true)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      const fixture = await setupDeveloperView(mockDialog);
+      const selectStub = { value: ownTask.status } as any;
+
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+
+      expect(mockDialog.open).toHaveBeenCalled();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
+        .flush({ ...ownTask, status: 'done' });
+
+      // Fuerza el flush síncrono de los efectos pendientes para que el resource despache
+      // el nuevo fetch tras reload() (whenStable() aquí deadlockearía).
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1`).flush([{ ...ownTask, status: 'done' }, mockDeveloperTasks[1]]);
+      await fixture.whenStable();
+    });
+
+    it('no envía ninguna solicitud y revierte el select cuando el desarrollador declina', async () => {
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(false)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      const fixture = await setupDeveloperView(mockDialog);
+      const selectStub = { value: 'done' } as any;
+
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+
+      expect(mockDialog.open).toHaveBeenCalled();
+      expect(selectStub.value).toBe(ownTask.status);
+
+      httpMock.verify();
+    });
+
+    it('revierte el select y muestra un error cuando el backend rechaza tras confirmar', async () => {
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(true)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      const fixture = await setupDeveloperView(mockDialog);
+      const selectStub = { value: 'done' } as any;
+
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
+        .flush('error', { status: 400, statusText: 'Bad Request' });
+      await fixture.whenStable();
+
+      expect(selectStub.value).toBe(ownTask.status);
+      expect(
+        screen.getByText('Error al actualizar el estado. Intenta nuevamente.'),
+      ).toBeTruthy();
+    });
+
+    it('no abre el diálogo de confirmación para selecciones distintas de "done"', async () => {
+      const mockDialog = { open: vi.fn() };
+
+      const fixture = await setupDeveloperView(mockDialog);
+      const selectStub = { value: 'todo' } as any;
+
+      fixture.componentInstance.updateTaskStatus(ownTask, 'in_progress', selectStub);
+
+      expect(mockDialog.open).not.toHaveBeenCalled();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
+        .flush({ ...ownTask, status: 'in_progress' });
+
+      // Fuerza el flush síncrono de los efectos pendientes para que el resource despache
+      // el nuevo fetch tras reload() (whenStable() aquí deadlockearía).
+      fixture.detectChanges();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1`)
+        .flush([{ ...ownTask, status: 'in_progress' }, mockDeveloperTasks[1]]);
+      await fixture.whenStable();
+    });
+  });
 });

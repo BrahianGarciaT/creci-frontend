@@ -11,13 +11,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog.component';
 import {
   Task,
   TasksService,
@@ -201,8 +205,38 @@ export class TasksComponent {
   }
 
   /** Actualiza el estado de una tarea (desarrollador — solo tareas propias) */
-  updateTaskStatus(task: Task, status: TaskStatus): void {
+  updateTaskStatus(task: Task, status: TaskStatus, selectRef?: MatSelect): void {
     if (status === 'cancelled') return;
+
+    if (status === 'done') {
+      const dialogData: ConfirmDialogData = {
+        title: 'Completar tarea',
+        message:
+          'Al marcar la tarea como completada no podrás cambiar su estado de nuevo. ' +
+          'Esta acción no se puede deshacer. Si queda trabajo pendiente, crea una tarea nueva.',
+        confirmLabel: 'Completar',
+      };
+
+      const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+        width: '420px',
+        data: dialogData,
+      });
+
+      dialogRef.afterClosed().subscribe((confirmed) => {
+        if (confirmed) {
+          this.submitTaskStatus(task, status, selectRef);
+        } else if (selectRef) {
+          selectRef.value = task.status;
+        }
+      });
+      return;
+    }
+
+    this.submitTaskStatus(task, status, selectRef);
+  }
+
+  /** Envía la actualización de estado al backend y revierte el select en caso de error */
+  private submitTaskStatus(task: Task, status: TaskStatus, selectRef?: MatSelect): void {
     const payload: UpdateStatusPayload = { status: status as 'todo' | 'in_progress' | 'done' };
 
     this.tasksService.updateStatus(task.id, payload).subscribe({
@@ -211,6 +245,9 @@ export class TasksComponent {
       },
       error: () => {
         this.mutationError.set('Error al actualizar el estado. Intenta nuevamente.');
+        if (selectRef) {
+          selectRef.value = task.status;
+        }
       },
     });
   }
