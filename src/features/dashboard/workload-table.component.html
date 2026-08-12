@@ -1,0 +1,24 @@
+@if (isEmpty()) {
+  <p class="workload-empty">Sin carga de trabajo registrada.</p>
+} @else {
+  <table class="workload-table" aria-label="Carga de trabajo por usuario">
+    <thead>
+      <tr>
+        <th>Usuario</th>
+        <th>Abiertas</th>
+        <th>Completadas</th>
+        <th>Vencidas</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (entry of entries(); track entry.userId) {
+        <tr>
+          <td>{{ entry.email }}</td>
+          <td>{{ entry.open }}</td>
+          <td>{{ entry.done }}</td>
+          <td [class.workload-table__overdue]="entry.overdue > 0">{{ entry.overdue }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

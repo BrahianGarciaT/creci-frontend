@@ -3,7 +3,6 @@ import { authGuard } from '../core/guards/auth.guard';
 import { noAuthGuard } from '../core/guards/no-auth.guard';
 import { adminGuard } from '../core/guards/admin.guard';
 import { ShellComponent } from '../core/layout/shell/shell.component';
-import { DashboardPlaceholderComponent } from '../features/dashboard/dashboard-placeholder.component';
 
 export const routes: Routes = [
   // Default redirect to login
@@ -25,7 +24,8 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        component: DashboardPlaceholderComponent,
+        loadChildren: () =>
+          import('../features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
       },
       {
         path: 'users',
