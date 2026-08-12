@@ -1,0 +1,47 @@
+<div class="dashboard-page">
+  <!-- Error al cargar el detalle (incluye 403/404) — sin reintento.
+       `.value()` lanza cuando el resource está en estado de error, así que
+       este bloque se evalúa ANTES de leer `.value()` en cualquier lado. -->
+  @if (projectResource.error()) {
+    <div class="dashboard-error" role="alert">
+      <mat-icon class="dashboard-error__icon">error_outline</mat-icon>
+      <span>No tienes acceso a este proyecto o no existe.</span>
+    </div>
+  } @else {
+    <div class="dashboard-header">
+      <h1 class="dashboard-title">
+        {{ projectResource.value()?.name ?? 'Detalle del proyecto' }}
+      </h1>
+    </div>
+
+    <!-- Estado de carga -->
+    @if (projectResource.isLoading()) {
+      <div class="dashboard-loading" aria-label="Cargando detalle del proyecto">
+        <mat-spinner diameter="40" />
+      </div>
+    }
+
+    @if (projectResource.value(); as project) {
+      <div class="dashboard-widgets">
+        <section class="dashboard-widget">
+          <h2 class="dashboard-widget__title">Estado</h2>
+          <app-status-breakdown [counts]="project.counts" />
+        </section>
+
+        <section class="dashboard-widget">
+          <h2 class="dashboard-widget__title">Carga de trabajo</h2>
+          <app-workload-table [entries]="project.workload" />
+        </section>
+
+        <section class="dashboard-widget">
+          <app-overdue-list [entries]="project.overdue" [overdueCount]="project.overdueCount" />
+        </section>
+
+        <section class="dashboard-widget">
+          <h2 class="dashboard-widget__title">Tendencia de completitud</h2>
+          <app-trend-chart [points]="project.trend.points" />
+        </section>
+      </div>
+    }
+  }
+</div>

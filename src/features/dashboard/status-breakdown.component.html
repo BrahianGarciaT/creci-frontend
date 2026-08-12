@@ -1,0 +1,22 @@
+@if (isEmpty()) {
+  <p class="status-breakdown__empty">Sin tareas registradas.</p>
+} @else {
+  <dl class="status-breakdown">
+    <div class="status-breakdown__item">
+      <dt>Pendiente</dt>
+      <dd>{{ counts().todo }}</dd>
+    </div>
+    <div class="status-breakdown__item">
+      <dt>En progreso</dt>
+      <dd>{{ counts().in_progress }}</dd>
+    </div>
+    <div class="status-breakdown__item">
+      <dt>Completada</dt>
+      <dd>{{ counts().done }}</dd>
+    </div>
+    <div class="status-breakdown__item">
+      <dt>Cancelada</dt>
+      <dd>{{ counts().cancelled }}</dd>
+    </div>
+  </dl>
+}
