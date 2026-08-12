@@ -22,7 +22,7 @@ const mockTask: Task = {
 const mockDialogData: CreateTaskDialogData = {
   projects: [{ id: 'project-1', name: 'Proyecto A', status: 'active', developers: [], createdAt: '', updatedAt: '' }],
   users: [
-    { id: 'dev-1', email: 'dev@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '' },
+    { id: 'dev-1', email: 'dev@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '', projects: [] },
   ],
 };
 

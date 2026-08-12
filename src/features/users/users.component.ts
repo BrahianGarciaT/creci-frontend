@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { CreateUserDialogComponent } from './create-user-dialog.component';
+import { EditUserDialogComponent } from './edit-user-dialog.component';
+import { buildCascadeConfirmData } from './user-cascade-confirm';
 import { User, UsersService } from './users.service';
 import {
   ConfirmDialogComponent,
@@ -46,19 +48,29 @@ export class UsersComponent {
     });
   }
 
+  /** Abre el diálogo de edición y recarga la lista si el usuario fue actualizado. */
+  openEditDialog(user: User): void {
+    const dialogRef = this.dialog.open(EditUserDialogComponent, {
+      width: '480px',
+      data: user,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.usersResource.reload();
+      }
+    });
+  }
+
   /**
    * Pide confirmación mediante el diálogo modal compartido antes de desactivar al usuario:
-   * el usuario deja de poder iniciar sesión de inmediato, por lo que amerita el mismo
-   * modal que usa "tasks" para su acción terminal.
+   * el usuario deja de poder iniciar sesión de inmediato y pierde sus asignaciones de
+   * proyecto, por lo que amerita el mismo copy que advierte sobre la cascada en edición.
    */
   requestDeactivate(user: User): void {
     this.mutationError.set(null);
 
-    const dialogData: ConfirmDialogData = {
-      title: 'Desactivar usuario',
-      message: `El usuario "${user.email}" no podrá iniciar sesión hasta que se reactive su cuenta.`,
-      confirmLabel: 'Desactivar',
-    };
+    const dialogData: ConfirmDialogData = buildCascadeConfirmData(user, 'deactivate');
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '420px',

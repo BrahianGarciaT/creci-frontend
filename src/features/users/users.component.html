@@ -74,6 +74,17 @@
         <ng-container matColumnDef="actions">
           <mat-header-cell *matHeaderCellDef>Acciones</mat-header-cell>
           <mat-cell *matCellDef="let row">
+            <div class="action-buttons">
+              <!-- Editar usuario — abre diálogo con rol y contraseña opcional -->
+              <button
+                mat-icon-button
+                (click)="openEditDialog(row)"
+                [attr.aria-label]="'Editar ' + row.email"
+                title="Editar usuario"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            </div>
             @if (row.role !== 'admin') {
               <div class="action-buttons">
                 <!-- Desactivar usuario (solo si está activo) — pide confirmación en un diálogo modal -->
