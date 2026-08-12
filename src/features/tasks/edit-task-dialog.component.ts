@@ -304,7 +304,7 @@ export class EditTaskDialogComponent {
         status,
         priority,
         projectId,
-        assigneeId: assigneeId ?? undefined,
+        assigneeId,
         dueDate: dueDate ? dueDate.toISOString() : undefined,
       })
       .subscribe({

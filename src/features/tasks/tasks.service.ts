@@ -37,13 +37,15 @@ export interface CreateTaskPayload {
   dueDate?: string;
 }
 
-// Payload para actualizar una tarea (admin)
+// Payload para actualizar una tarea (admin). assigneeId acepta null explícito
+// para limpiar el asignado; a diferencia de los demás campos, undefined y null
+// no son equivalentes acá (undefined = sin cambios, null = limpiar).
 export interface UpdateTaskPayload {
   title?: string;
   description?: string;
   priority?: TaskPriority;
   projectId?: string;
-  assigneeId?: string;
+  assigneeId?: string | null;
   estimatedHours?: number;
   dueDate?: string;
   status?: TaskStatus;

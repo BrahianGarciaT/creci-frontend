@@ -154,6 +154,17 @@ describe('EditTaskDialogComponent', () => {
       expect(mockDialogRef.close).not.toHaveBeenCalledWith(expect.anything());
     });
 
+    it('should send assigneeId as explicit null when clearing to "Sin asignar", not undefined', () => {
+      component.form.controls.assigneeId.setValue(null);
+
+      component.submit();
+
+      expect(mockTasksService.update).toHaveBeenCalledWith(
+        mockTask.id,
+        expect.objectContaining({ assigneeId: null })
+      );
+    });
+
     it('should open a confirm dialog and call update when the admin confirms completing the task', () => {
       mockConfirmDialogRef.afterClosed.mockReturnValue(of(true));
       component.form.controls.status.setValue('done');
