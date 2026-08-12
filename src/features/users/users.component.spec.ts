@@ -15,6 +15,7 @@ const activeAdmin: User = {
   isActive: true,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
+  projects: [],
 };
 
 const activeDeveloper: User = {
@@ -24,6 +25,7 @@ const activeDeveloper: User = {
   isActive: true,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
+  projects: [{ id: 'proj-1', name: 'Proyecto Alfa' }],
 };
 
 const inactiveDeveloper: User = {
@@ -33,6 +35,7 @@ const inactiveDeveloper: User = {
   isActive: false,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
+  projects: [],
 };
 
 // Construye un mock del recurso httpResource compatible con signals
@@ -161,6 +164,7 @@ describe('UsersComponent', () => {
           data: expect.objectContaining({
             title: 'Desactivar usuario',
             confirmLabel: 'Desactivar',
+            message: expect.stringContaining('Proyecto Alfa'),
           }),
         }),
       );
@@ -199,6 +203,59 @@ describe('UsersComponent', () => {
       });
 
       expect(mockService.deactivate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Flujo de editar usuario', () => {
+    it('debe abrir EditUserDialogComponent con el usuario como MAT_DIALOG_DATA al hacer clic en editar', async () => {
+      const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(null)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
+
+      await userEvent.click(
+        screen.getByRole('button', { name: /editar developer@example\.com/i }),
+      );
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: activeDeveloper }),
+      );
+    });
+
+    it('debe recargar la lista al cerrar el diálogo de edición con resultado', async () => {
+      const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of({ ...activeDeveloper, role: 'admin' })) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
+
+      await userEvent.click(
+        screen.getByRole('button', { name: /editar developer@example\.com/i }),
+      );
+
+      await waitFor(() => {
+        expect(mockService.users.reload).toHaveBeenCalled();
+      });
+    });
+
+    it('NO debe recargar la lista si el diálogo de edición se cierra sin resultado', async () => {
+      const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(null)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
+
+      await userEvent.click(
+        screen.getByRole('button', { name: /editar developer@example\.com/i }),
+      );
+
+      await waitFor(() => {
+        expect(mockDialog.open).toHaveBeenCalled();
+      });
+
+      expect(mockService.users.reload).not.toHaveBeenCalled();
     });
   });
 

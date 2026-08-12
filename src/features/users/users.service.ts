@@ -11,6 +11,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  projects: { id: string; name: string }[];
 }
 
 // Payload para crear un nuevo usuario
@@ -18,6 +19,12 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   role?: 'admin' | 'developer';
+}
+
+// Payload para editar un usuario existente — password se omite si no se cambia
+export interface UpdateUserPayload {
+  role?: 'admin' | 'developer';
+  password?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -50,5 +57,13 @@ export class UsersService {
    */
   reactivate(id: string): Observable<User> {
     return this.http.patch<User>(`${this.apiUrl}/users/${id}/reactivate`, {});
+  }
+
+  /**
+   * Actualiza el rol y/o la contraseña de un usuario existente.
+   * Retorna el usuario actualizado según la respuesta del backend.
+   */
+  updateUser(id: string, payload: UpdateUserPayload): Observable<User> {
+    return this.http.patch<User>(`${this.apiUrl}/users/${id}`, payload);
   }
 }

@@ -33,7 +33,7 @@ const mockProjects: Project[] = [
     description: 'Descripción Alpha',
     status: 'active',
     developers: [
-      { id: 'dev-1', email: 'developer@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '' },
+      { id: 'dev-1', email: 'developer@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '', projects: [] },
     ],
     createdAt: '',
     updatedAt: '',
@@ -50,7 +50,7 @@ const mockProjects: Project[] = [
 ];
 
 const mockUsers: User[] = [
-  { id: 'dev-1', email: 'developer@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '' },
+  { id: 'dev-1', email: 'developer@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '', projects: [] },
 ];
 
 // Tareas de ejemplo para la vista admin — una asignada al developer, otra no

@@ -1,0 +1,76 @@
+<h2 mat-dialog-title>Editar usuario</h2>
+
+<mat-dialog-content>
+  <form
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    novalidate
+    aria-label="Formulario de edición de usuario"
+    class="dialog-form"
+  >
+    <!-- Email de solo lectura -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Email</mat-label>
+      <input matInput type="email" [value]="user.email" disabled aria-label="Email del usuario" />
+    </mat-form-field>
+
+    <!-- Selector de rol -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Rol</mat-label>
+      <mat-select formControlName="role" aria-label="Rol del usuario">
+        <mat-option value="developer">Developer</mat-option>
+        <mat-option value="admin">Admin</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Campo contraseña opcional con toggle de visibilidad -->
+    <mat-form-field appearance="outline" class="dialog-field">
+      <mat-label>Nueva contraseña (opcional)</mat-label>
+      <input
+        matInput
+        [type]="hidePassword() ? 'password' : 'text'"
+        formControlName="password"
+        autocomplete="new-password"
+        aria-label="Nueva contraseña"
+      />
+      <button
+        type="button"
+        mat-icon-button
+        matSuffix
+        (click)="togglePasswordVisibility($event)"
+        [attr.aria-label]="hidePassword() ? 'Mostrar contraseña' : 'Ocultar contraseña'"
+      >
+        <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+      </button>
+      @if (form.controls.password.hasError('minlength') && form.controls.password.touched) {
+        <mat-error>La contraseña debe tener al menos 8 caracteres</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Banner de error genérico -->
+    @if (errorMessage()) {
+      <div class="dialog-error" role="alert" aria-live="polite">
+        <mat-icon class="dialog-error__icon">error_outline</mat-icon>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-button mat-dialog-close aria-label="Cancelar">Cancelar</button>
+  <button
+    type="submit"
+    mat-raised-button
+    color="primary"
+    [disabled]="form.invalid || isSubmitting()"
+    (click)="submit()"
+    aria-label="Guardar cambios"
+  >
+    @if (isSubmitting()) {
+      <mat-spinner diameter="20" />
+    } @else {
+      Guardar
+    }
+  </button>
+</mat-dialog-actions>
