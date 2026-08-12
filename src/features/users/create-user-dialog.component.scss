@@ -1,8 +1,10 @@
 // Formulario del diálogo — layout de columna con campos de ancho completo
+// padding-top da espacio al label flotante del primer mat-form-field (mat-dialog-content tiene overflow:hidden)
 .dialog-form {
   display: flex;
   flex-direction: column;
   min-width: 360px;
+  padding-top: 0.75rem;
 }
 
 // Campo de formulario: ancho completo
