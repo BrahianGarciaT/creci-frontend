@@ -1,11 +1,11 @@
-<h2 mat-dialog-title>New user</h2>
+<h2 mat-dialog-title>Nuevo usuario</h2>
 
 <mat-dialog-content>
   <form
     [formGroup]="form"
     (ngSubmit)="submit()"
     novalidate
-    aria-label="Create user form"
+    aria-label="Formulario de creación de usuario"
     class="dialog-form"
   >
     <!-- Campo email -->
@@ -16,27 +16,27 @@
         type="email"
         formControlName="email"
         autocomplete="off"
-        aria-label="Email address"
+        aria-label="Correo electrónico"
         aria-required="true"
       />
       @if (form.controls.email.hasError('required') && form.controls.email.touched) {
-        <mat-error>Email is required</mat-error>
+        <mat-error>El email es requerido</mat-error>
       } @else if (form.controls.email.hasError('email') && form.controls.email.touched) {
-        <mat-error>Enter a valid email address</mat-error>
+        <mat-error>Ingresa un email válido</mat-error>
       } @else if (form.controls.email.hasError('conflict')) {
-        <mat-error>Email already in use</mat-error>
+        <mat-error>El email ya está en uso</mat-error>
       }
     </mat-form-field>
 
     <!-- Campo contraseña con toggle de visibilidad -->
     <mat-form-field appearance="outline" class="dialog-field">
-      <mat-label>Password</mat-label>
+      <mat-label>Contraseña</mat-label>
       <input
         matInput
         [type]="hidePassword() ? 'password' : 'text'"
         formControlName="password"
         autocomplete="new-password"
-        aria-label="Password"
+        aria-label="Contraseña"
         aria-required="true"
       />
       <button
@@ -44,23 +44,23 @@
         mat-icon-button
         matSuffix
         (click)="togglePasswordVisibility($event)"
-        [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+        [attr.aria-label]="hidePassword() ? 'Mostrar contraseña' : 'Ocultar contraseña'"
       >
         <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
       </button>
       @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-        <mat-error>Password is required</mat-error>
+        <mat-error>La contraseña es requerida</mat-error>
       } @else if (form.controls.password.hasError('minlength') && form.controls.password.touched) {
-        <mat-error>Password must be at least 8 characters</mat-error>
+        <mat-error>La contraseña debe tener al menos 8 caracteres</mat-error>
       }
     </mat-form-field>
 
     <!-- Selector de rol -->
     <mat-form-field appearance="outline" class="dialog-field">
-      <mat-label>Role</mat-label>
-      <mat-select formControlName="role" aria-label="User role">
-        <mat-option value="developer">Developer</mat-option>
-        <mat-option value="admin">Admin</mat-option>
+      <mat-label>Rol</mat-label>
+      <mat-select formControlName="role" aria-label="Rol del usuario">
+        <mat-option value="developer">Desarrollador</mat-option>
+        <mat-option value="admin">Administrador</mat-option>
       </mat-select>
     </mat-form-field>
 
@@ -75,19 +75,19 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button type="button" mat-button mat-dialog-close aria-label="Cancel">Cancel</button>
+  <button type="button" mat-button mat-dialog-close aria-label="Cancelar">Cancelar</button>
   <button
     type="submit"
     mat-raised-button
     color="primary"
     [disabled]="form.invalid || isSubmitting()"
     (click)="submit()"
-    aria-label="Create user"
+    aria-label="Crear usuario"
   >
     @if (isSubmitting()) {
       <mat-spinner diameter="20" />
     } @else {
-      Create
+      Crear
     }
   </button>
 </mat-dialog-actions>

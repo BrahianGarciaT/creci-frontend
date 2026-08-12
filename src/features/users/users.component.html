@@ -56,7 +56,7 @@
         <ng-container matColumnDef="role">
           <mat-header-cell *matHeaderCellDef>Rol</mat-header-cell>
           <mat-cell *matCellDef="let row">
-            <span class="role-badge role-badge--{{ row.role }}">{{ row.role }}</span>
+            <span class="role-badge role-badge--{{ row.role }}">{{ row.role === 'admin' ? 'Administrador' : 'Desarrollador' }}</span>
           </mat-cell>
         </ng-container>
 

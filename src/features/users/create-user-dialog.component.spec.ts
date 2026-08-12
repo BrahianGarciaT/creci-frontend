@@ -40,42 +40,42 @@ const buildRenderOptions = (
 
 describe('CreateUserDialogComponent', () => {
   describe('Estado inicial del formulario', () => {
-    it('el botón Create debe estar deshabilitado con el formulario vacío', async () => {
+    it('el botón Crear debe estar deshabilitado con el formulario vacío', async () => {
       const mockService = buildMockUsersService();
       const mockRef = buildMockDialogRef();
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      const createButton = screen.getByRole('button', { name: /create/i });
+      const createButton = screen.getByRole('button', { name: /crear/i });
       expect((createButton as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('el botón Create debe estar deshabilitado con email inválido', async () => {
+    it('el botón Crear debe estar deshabilitado con email inválido', async () => {
       const mockService = buildMockUsersService();
       const mockRef = buildMockDialogRef();
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      await userEvent.type(screen.getByLabelText('Email address'), 'not-an-email');
-      await userEvent.type(screen.getByLabelText('Password'), 'validpassword');
+      await userEvent.type(screen.getByLabelText('Correo electrónico'), 'not-an-email');
+      await userEvent.type(screen.getByLabelText('Contraseña'), 'validpassword');
 
       await waitFor(() => {
-        const createButton = screen.getByRole('button', { name: /create/i });
+        const createButton = screen.getByRole('button', { name: /crear/i });
         expect((createButton as HTMLButtonElement).disabled).toBe(true);
       });
     });
 
-    it('el botón Create debe habilitarse con datos válidos', async () => {
+    it('el botón Crear debe habilitarse con datos válidos', async () => {
       const mockService = buildMockUsersService();
       const mockRef = buildMockDialogRef();
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'password123');
+      await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+      await userEvent.type(screen.getByLabelText('Contraseña'), 'password123');
 
       await waitFor(() => {
-        const createButton = screen.getByRole('button', { name: /create/i });
+        const createButton = screen.getByRole('button', { name: /crear/i });
         expect((createButton as HTMLButtonElement).disabled).toBe(false);
       });
     });
@@ -88,9 +88,9 @@ describe('CreateUserDialogComponent', () => {
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'password123');
-      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+      await userEvent.type(screen.getByLabelText('Contraseña'), 'password123');
+      await userEvent.click(screen.getByRole('button', { name: /crear/i }));
 
       await waitFor(() => {
         expect(mockRef.close).toHaveBeenCalledWith(mockCreatedUser);
@@ -99,7 +99,7 @@ describe('CreateUserDialogComponent', () => {
   });
 
   describe('Error 409 — email duplicado', () => {
-    it('debe mostrar el error "Email already in use" en el campo email', async () => {
+    it('debe mostrar el error "El email ya está en uso" en el campo email', async () => {
       const mockService = buildMockUsersService({
         create: vi.fn().mockReturnValue(throwError(() => ({ status: 409 }))),
       });
@@ -107,12 +107,12 @@ describe('CreateUserDialogComponent', () => {
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      await userEvent.type(screen.getByLabelText('Email address'), 'existing@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'password123');
-      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      await userEvent.type(screen.getByLabelText('Correo electrónico'), 'existing@example.com');
+      await userEvent.type(screen.getByLabelText('Contraseña'), 'password123');
+      await userEvent.click(screen.getByRole('button', { name: /crear/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(/email already in use/i)).toBeTruthy();
+        expect(screen.getByText(/el email ya está en uso/i)).toBeTruthy();
       });
       // El diálogo permanece abierto
       expect(mockRef.close).not.toHaveBeenCalled();
@@ -128,9 +128,9 @@ describe('CreateUserDialogComponent', () => {
 
       await render(CreateUserDialogComponent, buildRenderOptions(mockService, mockRef));
 
-      await userEvent.type(screen.getByLabelText('Email address'), 'user@example.com');
-      await userEvent.type(screen.getByLabelText('Password'), 'password123');
-      await userEvent.click(screen.getByRole('button', { name: /create/i }));
+      await userEvent.type(screen.getByLabelText('Correo electrónico'), 'user@example.com');
+      await userEvent.type(screen.getByLabelText('Contraseña'), 'password123');
+      await userEvent.click(screen.getByRole('button', { name: /crear/i }));
 
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeTruthy();
