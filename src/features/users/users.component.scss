@@ -38,6 +38,29 @@
   padding: 3rem 0;
 }
 
+// Estado vacío — centrado con ícono y texto descriptivo
+.users-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  color: var(--app-muted, #9aa0aa);
+
+  &__icon {
+    font-size: 3rem;
+    width: 3rem;
+    height: 3rem;
+    opacity: 0.4;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
 // Banner de error (carga + mutaciones) — consistent con login
 .users-error {
   display: flex;
@@ -102,15 +125,9 @@
   }
 }
 
-// Confirmación inline de desactivación
-.deactivate-confirm {
+// Botones de acción en fila
+.action-buttons {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-
-  &__label {
-    font-size: 0.85rem;
-    color: var(--app-muted, #9aa0aa);
-    white-space: nowrap;
-  }
+  gap: 0.25rem;
 }

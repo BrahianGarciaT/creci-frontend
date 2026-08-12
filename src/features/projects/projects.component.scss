@@ -124,16 +124,3 @@
   align-items: center;
   gap: 0.25rem;
 }
-
-// Confirmación inline de desactivación
-.deactivate-confirm {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &__label {
-    font-size: 0.85rem;
-    color: var(--app-muted, #9aa0aa);
-    white-space: nowrap;
-  }
-}

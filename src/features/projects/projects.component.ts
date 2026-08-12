@@ -9,6 +9,10 @@ import { CreateProjectDialogComponent } from './create-project-dialog.component'
 import { EditProjectDialogComponent } from './edit-project-dialog.component';
 import { AssignDevelopersDialogComponent } from './assign-developers-dialog.component';
 import { Project, ProjectsService } from './projects.service';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-projects',
@@ -33,12 +37,6 @@ export class ProjectsComponent {
 
   // Columnas visibles en la tabla
   readonly displayedColumns = ['name', 'description', 'status', 'developers', 'actions'];
-
-  // ID del proyecto pendiente de confirmar desactivación (null = ninguno)
-  readonly pendingDeactivateId = signal<string | null>(null);
-
-  // ID del proyecto pendiente de confirmar reactivación (null = ninguno)
-  readonly pendingReactivateId = signal<string | null>(null);
 
   // Mensaje de error de mutaciones — independiente del recurso
   readonly mutationError = signal<string | null>(null);
@@ -87,60 +85,62 @@ export class ProjectsComponent {
     });
   }
 
-  /** Marca un proyecto como "pendiente de confirmar desactivación". */
-  requestDeactivate(id: string): void {
+  /**
+   * Pide confirmación mediante el diálogo modal compartido antes de desactivar el proyecto:
+   * deja de estar disponible para nuevas asignaciones y no es una acción trivial de deshacer
+   * en el flujo de trabajo del equipo, por lo que amerita el mismo modal que usa "tasks".
+   */
+  requestDeactivate(project: Project): void {
     this.mutationError.set(null);
-    this.pendingDeactivateId.set(id);
+
+    const dialogData: ConfirmDialogData = {
+      title: 'Desactivar proyecto',
+      message: `El proyecto "${project.name}" pasará a estado inactivo y dejará de estar disponible para nuevas asignaciones hasta que se reactive.`,
+      confirmLabel: 'Desactivar',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: dialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.deactivate(project.id);
+      }
+    });
   }
 
-  /** Cancela el paso de confirmación de desactivación. */
-  cancelDeactivate(): void {
-    this.pendingDeactivateId.set(null);
-  }
-
-  /** Confirma y ejecuta la desactivación del proyecto indicado. */
-  confirmDeactivate(id: string): void {
+  /** Ejecuta la desactivación del proyecto indicado tras la confirmación del usuario. */
+  private deactivate(id: string): void {
     this.projectsService.deactivateProject(id).subscribe({
-      next: () => {
-        this.projectsResource.reload();
-        this.pendingDeactivateId.set(null);
-      },
+      next: () => this.projectsResource.reload(),
       error: (err) => {
         const message =
           err?.status === 400
             ? 'El proyecto ya está inactivo.'
             : 'Error al desactivar el proyecto. Intenta nuevamente.';
         this.mutationError.set(message);
-        this.pendingDeactivateId.set(null);
       },
     });
   }
 
-  /** Marca un proyecto como "pendiente de confirmar reactivación". */
-  requestReactivate(id: string): void {
+  /**
+   * Reactiva el proyecto directamente, sin confirmación: es la operación inversa de
+   * desactivar, no destruye datos ni afecta a terceros, así que no justifica el mismo
+   * modal (mismo criterio que "tasks" al no confirmar transiciones reversibles).
+   */
+  reactivate(project: Project): void {
     this.mutationError.set(null);
-    this.pendingReactivateId.set(id);
-  }
 
-  /** Cancela el paso de confirmación de reactivación. */
-  cancelReactivate(): void {
-    this.pendingReactivateId.set(null);
-  }
-
-  /** Confirma y ejecuta la reactivación del proyecto indicado. */
-  confirmReactivate(id: string): void {
-    this.projectsService.reactivateProject(id).subscribe({
-      next: () => {
-        this.projectsResource.reload();
-        this.pendingReactivateId.set(null);
-      },
+    this.projectsService.reactivateProject(project.id).subscribe({
+      next: () => this.projectsResource.reload(),
       error: (err) => {
         const message =
           err?.status === 400
             ? 'El proyecto ya está activo.'
             : 'Error al reactivar el proyecto. Intenta nuevamente.';
         this.mutationError.set(message);
-        this.pendingReactivateId.set(null);
       },
     });
   }

@@ -5,7 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { CreateUserDialogComponent } from './create-user-dialog.component';
-import { UsersService } from './users.service';
+import { User, UsersService } from './users.service';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-users',
@@ -25,12 +29,6 @@ export class UsersComponent {
   // Columnas visibles en la tabla
   readonly displayedColumns = ['email', 'role', 'status', 'actions'];
 
-  // ID del usuario pendiente de confirmar desactivación (null = ninguno)
-  readonly pendingDeactivateId = signal<string | null>(null);
-
-  // ID del usuario pendiente de confirmar reactivación (null = ninguno)
-  readonly pendingReactivateId = signal<string | null>(null);
-
   // Mensaje de error de mutaciones (deactivate/reactivate) — independiente del recurso
   readonly mutationError = signal<string | null>(null);
 
@@ -48,52 +46,54 @@ export class UsersComponent {
     });
   }
 
-  /** Marca un usuario como "pendiente de confirmar desactivación". */
-  requestDeactivate(id: string): void {
+  /**
+   * Pide confirmación mediante el diálogo modal compartido antes de desactivar al usuario:
+   * el usuario deja de poder iniciar sesión de inmediato, por lo que amerita el mismo
+   * modal que usa "tasks" para su acción terminal.
+   */
+  requestDeactivate(user: User): void {
     this.mutationError.set(null);
-    this.pendingDeactivateId.set(id);
+
+    const dialogData: ConfirmDialogData = {
+      title: 'Desactivar usuario',
+      message: `El usuario "${user.email}" no podrá iniciar sesión hasta que se reactive su cuenta.`,
+      confirmLabel: 'Desactivar',
+    };
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: dialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.deactivate(user.id);
+      }
+    });
   }
 
-  /** Cancela el paso de confirmación de desactivación. */
-  cancelDeactivate(): void {
-    this.pendingDeactivateId.set(null);
-  }
-
-  /** Confirma y ejecuta la desactivación del usuario indicado. */
-  confirmDeactivate(id: string): void {
+  /** Ejecuta la desactivación del usuario indicado tras la confirmación. */
+  private deactivate(id: string): void {
     this.usersService.deactivate(id).subscribe({
-      next: () => {
-        this.usersResource.reload();
-        this.pendingDeactivateId.set(null);
-      },
+      next: () => this.usersResource.reload(),
       error: () => {
         this.mutationError.set('Error al desactivar el usuario. Intenta nuevamente.');
-        this.pendingDeactivateId.set(null);
       },
     });
   }
 
-  /** Marca un usuario como "pendiente de confirmar reactivación". */
-  requestReactivate(id: string): void {
+  /**
+   * Reactiva al usuario directamente, sin confirmación: es la operación inversa de
+   * desactivar y no destruye datos, así que no justifica el mismo modal (mismo criterio
+   * que "tasks" al no confirmar transiciones reversibles).
+   */
+  reactivate(user: User): void {
     this.mutationError.set(null);
-    this.pendingReactivateId.set(id);
-  }
 
-  /** Cancela el paso de confirmación de reactivación. */
-  cancelReactivate(): void {
-    this.pendingReactivateId.set(null);
-  }
-
-  /** Confirma y ejecuta la reactivación del usuario indicado. */
-  confirmReactivate(id: string): void {
-    this.usersService.reactivate(id).subscribe({
-      next: () => {
-        this.usersResource.reload();
-        this.pendingReactivateId.set(null);
-      },
+    this.usersService.reactivate(user.id).subscribe({
+      next: () => this.usersResource.reload(),
       error: () => {
         this.mutationError.set('Error al reactivar el usuario. Intenta nuevamente.');
-        this.pendingReactivateId.set(null);
       },
     });
   }

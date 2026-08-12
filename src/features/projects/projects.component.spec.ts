@@ -30,6 +30,7 @@ const mockResource = {
 const mockProjectsService = {
   projects: mockResource,
   deactivateProject: vi.fn(() => of({})),
+  reactivateProject: vi.fn(() => of({})),
 };
 
 const mockDialogRef = {
@@ -45,6 +46,9 @@ describe('ProjectsComponent', () => {
   let fixture: ComponentFixture<ProjectsComponent>;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+    mockDialog.open.mockReturnValue(mockDialogRef);
+
     await TestBed.configureTestingModule({
       imports: [ProjectsComponent, NoopAnimationsModule],
       providers: [
@@ -99,24 +103,46 @@ describe('ProjectsComponent', () => {
     });
   });
 
-  describe('deactivate flow', () => {
-    it('should set pendingDeactivateId on requestDeactivate', () => {
-      component.requestDeactivate('1');
-      expect(component.pendingDeactivateId()).toBe('1');
+  describe('flujo de desactivación', () => {
+    it('debe abrir el diálogo de confirmación con copy en español', () => {
+      component.requestDeactivate(mockProjects[0]);
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: 'Desactivar proyecto',
+            confirmLabel: 'Desactivar',
+          }),
+        }),
+      );
     });
 
-    it('should clear pendingDeactivateId on cancelDeactivate', () => {
-      component.requestDeactivate('1');
-      component.cancelDeactivate();
-      expect(component.pendingDeactivateId()).toBeNull();
-    });
+    it('debe desactivar y recargar cuando se confirma el diálogo', () => {
+      mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
 
-    it('should call deactivateProject and reload on confirmDeactivate', () => {
-      component.requestDeactivate('1');
-      component.confirmDeactivate('1');
+      component.requestDeactivate(mockProjects[0]);
+
       expect(mockProjectsService.deactivateProject).toHaveBeenCalledWith('1');
       expect(mockResource.reload).toHaveBeenCalled();
-      expect(component.pendingDeactivateId()).toBeNull();
+    });
+
+    it('no debe desactivar cuando se cancela el diálogo', () => {
+      mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+      component.requestDeactivate(mockProjects[0]);
+
+      expect(mockProjectsService.deactivateProject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('flujo de reactivación', () => {
+    it('debe reactivar directamente sin abrir un diálogo de confirmación', () => {
+      component.reactivate(mockProjects[0]);
+
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      expect(mockProjectsService.reactivateProject).toHaveBeenCalledWith('1');
+      expect(mockResource.reload).toHaveBeenCalled();
     });
   });
 });

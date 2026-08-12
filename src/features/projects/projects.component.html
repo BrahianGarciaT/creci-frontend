@@ -84,95 +84,53 @@
         <ng-container matColumnDef="actions">
           <mat-header-cell *matHeaderCellDef>Acciones</mat-header-cell>
           <mat-cell *matCellDef="let row">
-            @if (pendingDeactivateId() === row.id) {
-              <!-- Confirmación inline de desactivación -->
-              <div class="deactivate-confirm">
-                <span class="deactivate-confirm__label">¿Desactivar "{{ row.name }}"?</span>
+            <div class="action-buttons">
+              <!-- Editar proyecto -->
+              <button
+                mat-icon-button
+                (click)="openEditDialog(row)"
+                [attr.aria-label]="'Editar ' + row.name"
+                matTooltip="Editar proyecto"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+
+              <!-- Asignar desarrolladores -->
+              <button
+                mat-icon-button
+                (click)="openAssignDialog(row)"
+                [attr.aria-label]="'Asignar desarrolladores a ' + row.name"
+                matTooltip="Asignar desarrolladores"
+              >
+                <mat-icon>group_add</mat-icon>
+              </button>
+
+              <!-- Desactivar proyecto (solo si está activo) — pide confirmación en un diálogo modal -->
+              @if (row.status === 'active') {
                 <button
-                  mat-button
+                  mat-icon-button
                   color="warn"
-                  (click)="confirmDeactivate(row.id)"
-                  [attr.aria-label]="'Confirmar desactivación de ' + row.name"
+                  (click)="requestDeactivate(row)"
+                  [attr.aria-label]="'Desactivar ' + row.name"
+                  matTooltip="Desactivar proyecto"
                 >
-                  Confirmar
+                  <mat-icon>block</mat-icon>
                 </button>
+              }
+
+              <!-- Reactivar proyecto (solo si está inactivo) — acción directa, reversible -->
+              @if (row.status === 'inactive') {
                 <button
-                  mat-button
-                  (click)="cancelDeactivate()"
-                  [attr.aria-label]="'Cancelar desactivación de ' + row.name"
-                >
-                  Cancelar
-                </button>
-              </div>
-            } @else if (pendingReactivateId() === row.id) {
-              <!-- Confirmación inline de reactivación -->
-              <div class="deactivate-confirm">
-                <span class="deactivate-confirm__label">¿Reactivar "{{ row.name }}"?</span>
-                <button
-                  mat-button
+                  mat-icon-button
                   color="primary"
-                  (click)="confirmReactivate(row.id)"
-                  [attr.aria-label]="'Confirmar reactivación de ' + row.name"
+                  (click)="reactivate(row)"
+                  [attr.aria-label]="'Reactivar ' + row.name"
+                  matTooltip="Reactivar proyecto"
                 >
-                  Confirmar
+                  <mat-icon>check_circle</mat-icon>
                 </button>
-                <button
-                  mat-button
-                  (click)="cancelReactivate()"
-                  [attr.aria-label]="'Cancelar reactivación de ' + row.name"
-                >
-                  Cancelar
-                </button>
-              </div>
-            } @else {
-              <div class="action-buttons">
-                <!-- Editar proyecto -->
-                <button
-                  mat-icon-button
-                  (click)="openEditDialog(row)"
-                  [attr.aria-label]="'Editar ' + row.name"
-                  matTooltip="Editar proyecto"
-                >
-                  <mat-icon>edit</mat-icon>
-                </button>
-
-                <!-- Asignar desarrolladores -->
-                <button
-                  mat-icon-button
-                  (click)="openAssignDialog(row)"
-                  [attr.aria-label]="'Asignar desarrolladores a ' + row.name"
-                  matTooltip="Asignar desarrolladores"
-                >
-                  <mat-icon>group_add</mat-icon>
-                </button>
-
-                <!-- Desactivar proyecto (solo si está activo) -->
-                @if (row.status === 'active') {
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    (click)="requestDeactivate(row.id)"
-                    [attr.aria-label]="'Desactivar ' + row.name"
-                    matTooltip="Desactivar proyecto"
-                  >
-                    <mat-icon>block</mat-icon>
-                  </button>
-                }
-
-                <!-- Reactivar proyecto (solo si está inactivo) -->
-                @if (row.status === 'inactive') {
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    (click)="requestReactivate(row.id)"
-                    [attr.aria-label]="'Reactivar ' + row.name"
-                    matTooltip="Reactivar proyecto"
-                  >
-                    <mat-icon>check_circle</mat-icon>
-                  </button>
-                }
-              </div>
-            }
+              }
+            </div>
           </mat-cell>
         </ng-container>
 

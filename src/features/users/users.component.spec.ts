@@ -1,9 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/angular';
+import { render, screen, waitFor } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { signal } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { of, throwError } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { UsersComponent } from './users.component';
 import { UsersService, User } from './users.service';
 
@@ -46,10 +46,11 @@ const buildMockResource = (users: User[] = []) => ({
 // Construye el mock de UsersService con un recurso configurable
 const buildMockUsersService = (
   users: User[] = [],
-  overrides: { deactivate?: ReturnType<typeof vi.fn> } = {},
+  overrides: { deactivate?: ReturnType<typeof vi.fn>; reactivate?: ReturnType<typeof vi.fn> } = {},
 ) => ({
   users: buildMockResource(users),
   deactivate: vi.fn().mockReturnValue(of({ ...activeDeveloper, isActive: false })),
+  reactivate: vi.fn().mockReturnValue(of({ ...inactiveDeveloper, isActive: true })),
   create: vi.fn().mockReturnValue(of(activeDeveloper)),
   ...overrides,
 });
@@ -77,20 +78,36 @@ describe('UsersComponent', () => {
       expect(screen.getByText('developer@example.com')).toBeTruthy();
     });
 
-    it('debe mostrar el encabezado "Users"', async () => {
+    it('debe mostrar el encabezado "Usuarios"', async () => {
       const mockService = buildMockUsersService([]);
 
       await render(UsersComponent, buildRenderOptions(mockService));
 
-      expect(screen.getByText('Users')).toBeTruthy();
+      expect(screen.getByText('Usuarios')).toBeTruthy();
     });
 
-    it('debe mostrar el botón "New user"', async () => {
+    it('debe mostrar el botón "Nuevo usuario"', async () => {
       const mockService = buildMockUsersService([]);
 
       await render(UsersComponent, buildRenderOptions(mockService));
 
-      expect(screen.getByRole('button', { name: /new user/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /nuevo usuario/i })).toBeTruthy();
+    });
+
+    it('debe mostrar el estado vacío cuando no hay usuarios', async () => {
+      const mockService = buildMockUsersService([]);
+
+      await render(UsersComponent, buildRenderOptions(mockService));
+
+      expect(screen.getByText('No hay usuarios registrados todavía.')).toBeTruthy();
+    });
+
+    it('NO debe mostrar el estado vacío cuando hay usuarios', async () => {
+      const mockService = buildMockUsersService([activeDeveloper]);
+
+      await render(UsersComponent, buildRenderOptions(mockService));
+
+      expect(screen.queryByText('No hay usuarios registrados todavía.')).toBeNull();
     });
   });
 
@@ -101,7 +118,7 @@ describe('UsersComponent', () => {
       await render(UsersComponent, buildRenderOptions(mockService));
 
       expect(
-        screen.getByRole('button', { name: /deactivate developer@example\.com/i }),
+        screen.getByRole('button', { name: /desactivar developer@example\.com/i }),
       ).toBeTruthy();
     });
 
@@ -111,7 +128,7 @@ describe('UsersComponent', () => {
       await render(UsersComponent, buildRenderOptions(mockService));
 
       expect(
-        screen.queryByRole('button', { name: /deactivate admin@example\.com/i }),
+        screen.queryByRole('button', { name: /desactivar admin@example\.com/i }),
       ).toBeNull();
     });
 
@@ -121,41 +138,43 @@ describe('UsersComponent', () => {
       await render(UsersComponent, buildRenderOptions(mockService));
 
       expect(
-        screen.queryByRole('button', { name: /deactivate inactive@example\.com/i }),
+        screen.queryByRole('button', { name: /desactivar inactive@example\.com/i }),
       ).toBeNull();
     });
   });
 
   describe('Flujo de desactivar usuario', () => {
-    it('debe mostrar el paso de confirmación al hacer clic en Deactivate', async () => {
+    it('debe abrir el diálogo modal de confirmación con copy en español al hacer clic en Desactivar', async () => {
       const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(false)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
-      await render(UsersComponent, buildRenderOptions(mockService));
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
       await userEvent.click(
-        screen.getByRole('button', { name: /deactivate developer@example\.com/i }),
+        screen.getByRole('button', { name: /desactivar developer@example\.com/i }),
       );
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /confirm deactivate developer@example\.com/i }),
-        ).toBeTruthy();
-        expect(
-          screen.getByRole('button', { name: /cancel deactivate developer@example\.com/i }),
-        ).toBeTruthy();
-      });
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: 'Desactivar usuario',
+            confirmLabel: 'Desactivar',
+          }),
+        }),
+      );
     });
 
-    it('debe llamar a deactivate y recargar al confirmar', async () => {
+    it('debe llamar a deactivate y recargar cuando se confirma el diálogo', async () => {
       const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(true)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
-      await render(UsersComponent, buildRenderOptions(mockService));
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
       await userEvent.click(
-        screen.getByRole('button', { name: /deactivate developer@example\.com/i }),
-      );
-      await userEvent.click(
-        screen.getByRole('button', { name: /confirm deactivate developer@example\.com/i }),
+        screen.getByRole('button', { name: /desactivar developer@example\.com/i }),
       );
 
       await waitFor(() => {
@@ -164,38 +183,53 @@ describe('UsersComponent', () => {
       });
     });
 
-    it('debe cancelar la confirmación sin llamar al servicio', async () => {
+    it('NO debe llamar a deactivate cuando se cancela el diálogo', async () => {
       const mockService = buildMockUsersService([activeDeveloper]);
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(false)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
-      await render(UsersComponent, buildRenderOptions(mockService));
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
       await userEvent.click(
-        screen.getByRole('button', { name: /deactivate developer@example\.com/i }),
-      );
-      await userEvent.click(
-        screen.getByRole('button', { name: /cancel deactivate developer@example\.com/i }),
+        screen.getByRole('button', { name: /desactivar developer@example\.com/i }),
       );
 
       await waitFor(() => {
-        // El botón de confirmación ya no está visible
-        expect(
-          screen.queryByRole('button', { name: /confirm deactivate/i }),
-        ).toBeNull();
+        expect(mockDialog.open).toHaveBeenCalled();
       });
 
       expect(mockService.deactivate).not.toHaveBeenCalled();
     });
   });
 
+  describe('Flujo de reactivar usuario', () => {
+    it('debe reactivar directamente al hacer clic, sin abrir un diálogo de confirmación', async () => {
+      const mockService = buildMockUsersService([inactiveDeveloper]);
+      const mockDialog = { open: vi.fn() };
+
+      await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
+
+      await userEvent.click(
+        screen.getByRole('button', { name: /reactivar inactive@example\.com/i }),
+      );
+
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockService.reactivate).toHaveBeenCalledWith(inactiveDeveloper.id);
+        expect(mockService.users.reload).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe('Apertura del diálogo de creación', () => {
-    it('debe abrir MatDialog al hacer clic en "New user"', async () => {
+    it('debe abrir MatDialog al hacer clic en "Nuevo usuario"', async () => {
       const mockService = buildMockUsersService([]);
       const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(null)) };
       const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
       await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
-      await userEvent.click(screen.getByRole('button', { name: /new user/i }));
+      await userEvent.click(screen.getByRole('button', { name: /nuevo usuario/i }));
 
       await waitFor(() => {
         expect(mockDialog.open).toHaveBeenCalled();
@@ -210,7 +244,7 @@ describe('UsersComponent', () => {
 
       await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
-      await userEvent.click(screen.getByRole('button', { name: /new user/i }));
+      await userEvent.click(screen.getByRole('button', { name: /nuevo usuario/i }));
 
       await waitFor(() => {
         expect(mockService.users.reload).toHaveBeenCalled();
@@ -225,7 +259,7 @@ describe('UsersComponent', () => {
 
       await render(UsersComponent, buildRenderOptions(mockService, mockDialog));
 
-      await userEvent.click(screen.getByRole('button', { name: /new user/i }));
+      await userEvent.click(screen.getByRole('button', { name: /nuevo usuario/i }));
 
       await waitFor(() => {
         expect(mockDialog.open).toHaveBeenCalled();
