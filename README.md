@@ -1,59 +1,73 @@
-# Frontend
+# Creci App — Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.13.
+Aplicación web de Creci App para la gestión de proyectos y tareas: login, dashboard con métricas, administración de proyectos, tareas y usuarios.
 
-## Development server
+## Stack
 
-To start a local development server, run:
+- [Angular](https://angular.dev/) 22 (standalone components, sin NgModules)
+- Angular Material + Angular CDK para UI
+- Signals nativos de Angular para estado
+- Chart.js para gráficos del dashboard
+- SCSS para estilos
+- pnpm como gestor de paquetes
+- Vitest + Testing Library para tests
 
-```bash
-ng serve
+## Requisitos previos
+
+- Node.js 20+
+- pnpm 11 (`corepack enable` si no lo tenés instalado)
+- El [backend](../backend/README.md) corriendo en `http://localhost:3000` (o la URL que configures)
+
+## Puesta en marcha
+
+1. Instalar dependencias:
+
+   ```bash
+   pnpm install
+   ```
+
+2. Correr la aplicación en modo desarrollo:
+
+   ```bash
+   pnpm start
+   ```
+
+   Queda disponible en `http://localhost:4200`.
+
+No usa archivos `.env`: la URL del backend se configura en `src/environments/environment.ts` (desarrollo) y `src/environments/environment.prod.ts` (producción), a través de la propiedad `apiUrl`.
+
+## Scripts disponibles
+
+| Script | Descripción |
+|---|---|
+| `pnpm start` | Levanta la app en modo desarrollo (`ng serve`) |
+| `pnpm build` | Compila la app para producción |
+| `pnpm watch` | Compila en modo watch con configuración de desarrollo |
+| `pnpm test` | Corre los tests con Vitest |
+
+## Estructura del proyecto
+
+```
+src/app/
+├── core/            # Guards, interceptors, layout y servicios transversales (auth, shell)
+├── features/        # Módulos de negocio, cada uno con rutas lazy-loaded
+│   ├── auth/
+│   ├── dashboard/
+│   ├── projects/
+│   ├── tasks/
+│   └── users/
+├── shared/ui/       # Componentes reutilizables
+└── app.routes.ts    # Configuración de rutas raíz
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Autenticación y rutas
 
-## Code scaffolding
+Las rutas de cada feature se cargan de forma lazy (`loadChildren`) y están protegidas con guards:
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- `authGuard` — requiere sesión iniciada
+- `noAuthGuard` — solo accesible sin sesión (login, registro)
+- `adminGuard` — restringe acceso a usuarios admin
 
-```bash
-ng generate component component-name
-```
+## Conexión con el backend
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Todas las peticiones HTTP se hacen contra `environment.apiUrl` usando `HttpClient`. Si cambiás el puerto o la URL del backend, actualizá esa propiedad en `src/environments/environment.ts`.
