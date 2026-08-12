@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  InjectionToken,
   computed,
   effect,
   inject,
@@ -22,6 +23,16 @@ import {
 // Registro acotado — solo los controllers/elements/scales que este wrapper usa
 // (tree-shakeable, en vez de `Chart.register(...registerables)`).
 Chart.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Tooltip);
+
+// Constructor de Chart inyectado en vez de importado directo: así los tests
+// lo reemplazan por DI (`TestBed` provider) en lugar de interceptar el módulo
+// `chart.js` con `vi.mock`, que depende del pre-bundling de Vite y es
+// intermitente en corridas paralelas (falla con errores de canvas en jsdom
+// cuando el mock no llega a tiempo).
+export const CHART_CTOR = new InjectionToken<typeof Chart>('CHART_CTOR', {
+  providedIn: 'root',
+  factory: () => Chart,
+});
 
 // Punto de tendencia genérico consumido por el wrapper — sin tipos del dominio dashboard.
 export interface TrendChartPoint {
@@ -52,6 +63,7 @@ export class TrendChartComponent {
   readonly hasData = computed(() => this.points().some((p) => p.count > 0));
 
   private readonly canvasRef = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
+  private readonly ChartCtor = inject(CHART_CTOR);
   private chart: Chart | undefined;
 
   constructor() {
@@ -70,7 +82,7 @@ export class TrendChartComponent {
       const data = points.map((p) => p.count);
 
       if (!this.chart) {
-        this.chart = new Chart(canvasEl, {
+        this.chart = new this.ChartCtor(canvasEl, {
           type: 'line',
           data: {
             labels,
