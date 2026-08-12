@@ -155,7 +155,7 @@
           <!-- Columna asignado -->
           <ng-container matColumnDef="assignee">
             <mat-header-cell *matHeaderCellDef>Asignado a</mat-header-cell>
-            <mat-cell *matCellDef="let row">{{ row.assignee?.email || '—' }}</mat-cell>
+            <mat-cell *matCellDef="let row">{{ row.assignee?.email || 'Sin asignar' }}</mat-cell>
           </ng-container>
 
           <!-- Columna vencimiento -->
@@ -324,7 +324,7 @@
             <!-- Columna asignado -->
             <ng-container matColumnDef="assignee">
               <mat-header-cell *matHeaderCellDef>Asignado a</mat-header-cell>
-              <mat-cell *matCellDef="let row">{{ row.assignee?.email || '—' }}</mat-cell>
+              <mat-cell *matCellDef="let row">{{ row.assignee?.email || 'Sin asignar' }}</mat-cell>
             </ng-container>
 
             <!-- Columna acción de estado (desarrollador) -->

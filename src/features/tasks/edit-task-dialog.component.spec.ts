@@ -23,12 +23,32 @@ const mockTask: Task = {
 
 const mockUpdatedTask: Task = { ...mockTask, title: 'Título actualizado' };
 
+const devUser1 = {
+  id: 'dev-1',
+  email: 'dev@example.com',
+  role: 'developer' as const,
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+  projects: [],
+};
+const devUser2 = {
+  id: 'dev-2',
+  email: 'dev2@example.com',
+  role: 'developer' as const,
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+  projects: [],
+};
+
 const mockDialogData: EditTaskDialogData = {
   task: mockTask,
-  projects: [{ id: 'project-1', name: 'Proyecto A', status: 'active', developers: [], createdAt: '', updatedAt: '' }],
-  users: [
-    { id: 'dev-1', email: 'dev@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '', projects: [] },
+  projects: [
+    { id: 'project-1', name: 'Proyecto A', status: 'active', developers: [devUser1], createdAt: '', updatedAt: '' },
+    { id: 'project-2', name: 'Proyecto B', status: 'active', developers: [devUser2], createdAt: '', updatedAt: '' },
   ],
+  users: [devUser1, devUser2],
 };
 
 const mockTasksService = {
@@ -84,6 +104,24 @@ describe('EditTaskDialogComponent', () => {
     expect(component.form.controls.projectId.value).toBe(mockTask.project?.id);
     expect(component.form.controls.assigneeId.value).toBe(mockTask.assignee?.id);
     expect(component.form.controls.dueDate.value).toEqual(new Date(mockTask.dueDate!));
+  });
+
+  it('should start with the assignee field enabled and populated for a valid pre-filled project+assignee', () => {
+    TestBed.tick();
+
+    expect(component.form.controls.assigneeId.disabled).toBe(false);
+    expect(component.form.controls.assigneeId.value).toBe('dev-1');
+    expect(component.eligibleDevelopers()).toEqual([devUser1]);
+  });
+
+  it('should clear the assignee when the project changes and it is no longer valid', () => {
+    TestBed.tick();
+
+    component.form.controls.projectId.setValue('project-2');
+    TestBed.tick();
+
+    expect(component.form.controls.assigneeId.value).toBeNull();
+    expect(component.eligibleDevelopers()).toEqual([devUser2]);
   });
 
   describe('submit', () => {
