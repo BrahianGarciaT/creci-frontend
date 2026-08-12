@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -15,6 +15,7 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
+import { bindAssigneeGating } from './assignee-gating';
 import { Task, TaskPriority, TaskStatus, TasksService } from './tasks.service';
 
 // Datos inyectados al abrir el diálogo desde el componente padre
@@ -120,7 +121,7 @@ export interface EditTaskDialogData {
           <mat-label>Asignado a (opcional)</mat-label>
           <mat-select formControlName="assigneeId" aria-label="Desarrollador asignado">
             <mat-option [value]="null">Sin asignar</mat-option>
-            @for (user of developerUsers; track user.id) {
+            @for (user of eligibleDevelopers(); track user.id) {
               <mat-option [value]="user.id">{{ user.email }}</mat-option>
             }
           </mat-select>
@@ -206,6 +207,7 @@ export class EditTaskDialogComponent {
   private readonly tasksService = inject(TasksService);
   private readonly dialogRef = inject(MatDialogRef<EditTaskDialogComponent>);
   private readonly dialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Datos inyectados desde el componente padre (tarea a editar, proyectos y usuarios disponibles)
   readonly data = inject<EditTaskDialogData>(MAT_DIALOG_DATA);
@@ -213,11 +215,6 @@ export class EditTaskDialogComponent {
   // Estado de la UI
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
-
-  // Solo desarrolladores pueden ser asignados a tareas
-  get developerUsers(): User[] {
-    return this.data.users.filter((u) => u.role === 'developer');
-  }
 
   // Formulario pre-cargado con los datos de la tarea
   readonly form = new FormGroup({
@@ -243,6 +240,16 @@ export class EditTaskDialogComponent {
     dueDate: new FormControl<Date | null>(
       this.data.task.dueDate ? new Date(this.data.task.dueDate) : null
     ),
+  });
+
+  // Desarrolladores elegibles según el proyecto seleccionado; también
+  // habilita/deshabilita y limpia el control de asignado según corresponda
+  readonly eligibleDevelopers = bindAssigneeGating({
+    projectControl: this.form.controls.projectId,
+    assigneeControl: this.form.controls.assigneeId,
+    projects: this.data.projects,
+    users: this.data.users,
+    destroyRef: this.destroyRef,
   });
 
   /** Maneja el envío del formulario */

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
+import { bindAssigneeGating } from './assignee-gating';
 import { TaskPriority, TasksService } from './tasks.service';
 
 // Datos inyectados al abrir el diálogo desde el componente padre
@@ -104,7 +105,7 @@ export interface CreateTaskDialogData {
           <mat-label>Asignado a (opcional)</mat-label>
           <mat-select formControlName="assigneeId" aria-label="Desarrollador asignado">
             <mat-option [value]="null">Sin asignar</mat-option>
-            @for (user of developerUsers; track user.id) {
+            @for (user of eligibleDevelopers(); track user.id) {
               <mat-option [value]="user.id">{{ user.email }}</mat-option>
             }
           </mat-select>
@@ -189,6 +190,7 @@ export interface CreateTaskDialogData {
 export class CreateTaskDialogComponent {
   private readonly tasksService = inject(TasksService);
   private readonly dialogRef = inject(MatDialogRef<CreateTaskDialogComponent>);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Datos inyectados desde el componente padre (lista de proyectos y usuarios)
   readonly data = inject<CreateTaskDialogData>(MAT_DIALOG_DATA);
@@ -196,11 +198,6 @@ export class CreateTaskDialogComponent {
   // Estado de la UI
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
-
-  // Solo desarrolladores pueden ser asignados a tareas
-  get developerUsers(): User[] {
-    return this.data.users.filter((u) => u.role === 'developer');
-  }
 
   // Formulario reactivo con validaciones de campos
   readonly form = new FormGroup({
@@ -221,6 +218,16 @@ export class CreateTaskDialogComponent {
     }),
     assigneeId: new FormControl<string | null>(null),
     dueDate: new FormControl<Date | null>(null),
+  });
+
+  // Desarrolladores elegibles según el proyecto seleccionado; también
+  // habilita/deshabilita y limpia el control de asignado según corresponda
+  readonly eligibleDevelopers = bindAssigneeGating({
+    projectControl: this.form.controls.projectId,
+    assigneeControl: this.form.controls.assigneeId,
+    projects: this.data.projects,
+    users: this.data.users,
+    destroyRef: this.destroyRef,
   });
 
   /** Maneja el envío del formulario */

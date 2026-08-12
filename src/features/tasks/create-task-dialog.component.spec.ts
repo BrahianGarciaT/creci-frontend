@@ -19,11 +19,31 @@ const mockTask: Task = {
   updatedAt: '',
 };
 
+const devUser1 = {
+  id: 'dev-1',
+  email: 'dev@example.com',
+  role: 'developer' as const,
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+  projects: [],
+};
+const devUser2 = {
+  id: 'dev-2',
+  email: 'dev2@example.com',
+  role: 'developer' as const,
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+  projects: [],
+};
+
 const mockDialogData: CreateTaskDialogData = {
-  projects: [{ id: 'project-1', name: 'Proyecto A', status: 'active', developers: [], createdAt: '', updatedAt: '' }],
-  users: [
-    { id: 'dev-1', email: 'dev@example.com', role: 'developer', isActive: true, createdAt: '', updatedAt: '', projects: [] },
+  projects: [
+    { id: 'project-1', name: 'Proyecto A', status: 'active', developers: [devUser1], createdAt: '', updatedAt: '' },
+    { id: 'project-2', name: 'Proyecto B', status: 'active', developers: [devUser2], createdAt: '', updatedAt: '' },
   ],
+  users: [devUser1, devUser2],
 };
 
 const mockTasksService = {
@@ -59,8 +79,29 @@ describe('CreateTaskDialogComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should filter developerUsers to only developer role', () => {
-    expect(component.developerUsers).toEqual(mockDialogData.users);
+  it('should start with the assignee field disabled when no project is selected', () => {
+    expect(component.form.controls.assigneeId.disabled).toBe(true);
+    expect(component.eligibleDevelopers()).toEqual([]);
+  });
+
+  it('should enable the assignee field and scope developers to the selected project', () => {
+    component.form.controls.projectId.setValue('project-1');
+    TestBed.tick();
+
+    expect(component.form.controls.assigneeId.disabled).toBe(false);
+    expect(component.eligibleDevelopers()).toEqual([devUser1]);
+  });
+
+  it('should clear the assignee when the selected project changes and it is no longer valid', () => {
+    component.form.controls.projectId.setValue('project-1');
+    TestBed.tick();
+    component.form.controls.assigneeId.setValue('dev-1');
+
+    component.form.controls.projectId.setValue('project-2');
+    TestBed.tick();
+
+    expect(component.form.controls.assigneeId.value).toBeNull();
+    expect(component.eligibleDevelopers()).toEqual([devUser2]);
   });
 
   describe('submit', () => {
