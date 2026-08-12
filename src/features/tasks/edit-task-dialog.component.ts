@@ -3,7 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -11,6 +11,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../../shared/ui/confirm-dialog/confirm-dialog.component';
 import { Task, TaskPriority, TaskStatus, TasksService } from './tasks.service';
 
 // Datos inyectados al abrir el diálogo desde el componente padre
@@ -201,6 +205,7 @@ export interface EditTaskDialogData {
 export class EditTaskDialogComponent {
   private readonly tasksService = inject(TasksService);
   private readonly dialogRef = inject(MatDialogRef<EditTaskDialogComponent>);
+  private readonly dialog = inject(MatDialog);
 
   // Datos inyectados desde el componente padre (tarea a editar, proyectos y usuarios disponibles)
   readonly data = inject<EditTaskDialogData>(MAT_DIALOG_DATA);
@@ -247,6 +252,38 @@ export class EditTaskDialogComponent {
       return;
     }
 
+    const status = this.form.controls.status.value;
+    const isCompletingTask = status === 'done' && this.data.task.status !== 'done';
+
+    if (isCompletingTask) {
+      const dialogData: ConfirmDialogData = {
+        title: 'Completar tarea',
+        message:
+          'Al marcar la tarea como completada no podrás cambiar su estado de nuevo. ' +
+          'Esta acción no se puede deshacer. Si queda trabajo pendiente, crea una tarea nueva.',
+        confirmLabel: 'Completar',
+      };
+
+      const confirmRef = this.dialog.open(ConfirmDialogComponent, {
+        width: '420px',
+        data: dialogData,
+      });
+
+      confirmRef.afterClosed().subscribe((confirmed) => {
+        if (confirmed) {
+          this.performUpdate();
+        } else {
+          this.form.controls.status.setValue(this.data.task.status);
+        }
+      });
+      return;
+    }
+
+    this.performUpdate();
+  }
+
+  /** Envía la actualización de la tarea al backend */
+  private performUpdate(): void {
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
