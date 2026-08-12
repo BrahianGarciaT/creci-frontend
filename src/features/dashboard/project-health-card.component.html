@@ -1,0 +1,36 @@
+<a
+  class="health-card"
+  [routerLink]="['/dashboard/projects', project().projectId]"
+  [attr.aria-label]="'Ver detalle de ' + project().name"
+>
+  <h3 class="health-card__title">{{ project().name }}</h3>
+
+  @if (isEmpty()) {
+    <p class="health-card__empty">Sin tareas</p>
+  } @else {
+    <p class="health-card__rate">{{ completionPercent() }}%</p>
+
+    <dl class="health-card__counts">
+      <div class="health-card__count">
+        <dt>Total</dt>
+        <dd>{{ project().total }}</dd>
+      </div>
+      <div class="health-card__count">
+        <dt>Pendiente</dt>
+        <dd>{{ project().counts.todo }}</dd>
+      </div>
+      <div class="health-card__count">
+        <dt>En progreso</dt>
+        <dd>{{ project().counts.in_progress }}</dd>
+      </div>
+      <div class="health-card__count">
+        <dt>Completada</dt>
+        <dd>{{ project().counts.done }}</dd>
+      </div>
+      <div class="health-card__count">
+        <dt>Cancelada</dt>
+        <dd>{{ project().counts.cancelled }}</dd>
+      </div>
+    </dl>
+  }
+</a>

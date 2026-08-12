@@ -1,0 +1,64 @@
+<div class="dashboard-page">
+  <div class="dashboard-header">
+    <h1 class="dashboard-title">Dashboard</h1>
+    @if (overviewResource.value(); as overview) {
+      <p class="dashboard-subtitle">
+        {{ overview.scope === 'org' ? 'Vista de toda la organización' : 'Vista de tus proyectos' }}
+      </p>
+    }
+  </div>
+
+  <!-- Estado de carga -->
+  @if (overviewResource.isLoading()) {
+    <div class="dashboard-loading" aria-label="Cargando dashboard">
+      <mat-spinner diameter="40" />
+    </div>
+  }
+
+  <!-- Error al cargar el resumen -->
+  @if (overviewResource.error()) {
+    <div class="dashboard-error" role="alert">
+      <mat-icon class="dashboard-error__icon">error_outline</mat-icon>
+      <span>Error al cargar el dashboard. Intenta nuevamente.</span>
+    </div>
+  }
+
+  @if (!overviewResource.isLoading() && !overviewResource.error()) {
+    @if (overviewResource.value(); as overview) {
+      @if (overview.projects.length === 0) {
+        <div class="dashboard-empty" aria-label="Sin proyectos">
+          <mat-icon class="dashboard-empty__icon">inbox</mat-icon>
+          <p class="dashboard-empty__text">
+            {{
+              overview.scope === 'org'
+                ? 'Todavía no hay proyectos registrados.'
+                : 'No tienes proyectos asignados todavía.'
+            }}
+          </p>
+        </div>
+      } @else {
+        <div class="dashboard-cards">
+          @for (project of overview.projects; track project.projectId) {
+            <app-project-health-card [project]="project" />
+          }
+        </div>
+      }
+
+      <div class="dashboard-widgets">
+        <section class="dashboard-widget">
+          <h2 class="dashboard-widget__title">Carga de trabajo</h2>
+          <app-workload-table [entries]="overview.workload" />
+        </section>
+
+        <section class="dashboard-widget">
+          <app-overdue-list [entries]="overview.overdue" [overdueCount]="overview.overdueCount" />
+        </section>
+
+        <section class="dashboard-widget">
+          <h2 class="dashboard-widget__title">Tendencia de completitud</h2>
+          <app-trend-chart [points]="overview.trend.points" />
+        </section>
+      </div>
+    }
+  }
+</div>
