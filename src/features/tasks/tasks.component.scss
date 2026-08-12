@@ -165,16 +165,24 @@
   gap: 0.25rem;
 }
 
+// Columna de acciones — necesita más ancho que el resto para alojar
+// la confirmación inline de cancelación (label + 2 botones)
+.mat-column-actions {
+  flex: 0 0 220px;
+  min-width: 220px;
+}
+
 // Confirmación inline de cancelación
 .cancel-confirm {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0;
 
   &__label {
     font-size: 0.85rem;
     color: var(--app-muted, #9aa0aa);
-    white-space: nowrap;
   }
 }
 
