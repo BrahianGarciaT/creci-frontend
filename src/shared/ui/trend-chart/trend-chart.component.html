@@ -1,0 +1,7 @@
+@if (hasData()) {
+  <div class="trend-chart">
+    <canvas #canvas></canvas>
+  </div>
+} @else {
+  <p class="trend-chart__empty">{{ emptyMessage() }}</p>
+}

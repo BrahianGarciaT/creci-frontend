@@ -1,0 +1,12 @@
+.trend-chart {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
+.trend-chart__empty {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 2rem 0;
+}

@@ -1,0 +1,55 @@
+// Tarjeta de salud de proyecto — enlace de bloque completo, sin comportamiento de modal
+.health-card {
+  display: block;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: var(--app-surface, #1a1d24);
+  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.08));
+  color: var(--app-text, #e6e8ec);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--app-accent, #4f8cff);
+  }
+
+  &__title {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  &__rate {
+    margin: 0 0 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--app-accent, #4f8cff);
+  }
+
+  &__empty {
+    margin: 0;
+    color: var(--app-muted, #9aa0aa);
+    font-size: 0.875rem;
+  }
+
+  &__counts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem 1rem;
+    margin: 0;
+  }
+
+  &__count {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--app-muted, #9aa0aa);
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+      color: var(--app-text, #e6e8ec);
+    }
+  }
+}

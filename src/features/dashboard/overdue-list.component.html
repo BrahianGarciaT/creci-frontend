@@ -1,0 +1,21 @@
+<div class="overdue-list">
+  <h3 class="overdue-list__title">Tareas vencidas ({{ overdueCount() }})</h3>
+
+  @if (isEmpty()) {
+    <p class="overdue-list__empty">Sin tareas vencidas.</p>
+  } @else {
+    <ul class="overdue-list__items">
+      @for (entry of entries(); track entry.id) {
+        <li class="overdue-list__item">
+          <span class="overdue-list__item-title">{{ entry.title }}</span>
+          <span class="overdue-list__item-meta">
+            {{ entry.projectName }} · venció {{ entry.dueDate | date: 'dd/MM/yyyy' }}
+            @if (entry.assigneeEmail) {
+              · {{ entry.assigneeEmail }}
+            }
+          </span>
+        </li>
+      }
+    </ul>
+  }
+</div>

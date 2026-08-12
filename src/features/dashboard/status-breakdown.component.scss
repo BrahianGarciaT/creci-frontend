@@ -1,0 +1,26 @@
+// Desglose de estado — presentacional
+.status-breakdown__empty {
+  margin: 0;
+  color: var(--app-muted, #9aa0aa);
+  font-size: 0.875rem;
+}
+
+.status-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+  margin: 0;
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--app-muted, #9aa0aa);
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+      color: var(--app-text, #e6e8ec);
+    }
+  }
+}
