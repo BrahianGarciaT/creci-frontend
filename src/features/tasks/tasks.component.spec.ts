@@ -11,10 +11,16 @@ import { TasksComponent } from './tasks.component';
 import { Task } from './tasks.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
+import { PageMeta } from '../../shared/models/paginated';
 import { AuthService, CurrentUser } from '../../core/services/auth.service';
 import { environment } from '../../environments/environment';
 
 const apiUrl = environment.apiUrl;
+
+// Construye el `meta` de una respuesta paginada — mismo cálculo que el backend (`Math.ceil`)
+function pageMeta(total: number, page = 1, limit = 20): PageMeta {
+  return { total, page, limit, totalPages: Math.ceil(total / limit) };
+}
 
 // Usuarios autenticados de ejemplo
 const adminUser: CurrentUser = { id: 'admin-1', email: 'admin@example.com', role: 'admin' };
@@ -130,9 +136,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(mockTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
 
       await fixture.whenStable();
 
@@ -166,9 +172,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(mockTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
 
       await fixture.whenStable();
 
@@ -182,7 +188,7 @@ describe('TasksComponent', () => {
       fixture.detectChanges();
 
       // El cierre del diálogo con resultado truthy debe disparar allTasksResource.reload()
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(mockTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
 
       await fixture.whenStable();
     });
@@ -198,9 +204,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(mockTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
 
       await fixture.whenStable();
 
@@ -238,7 +244,7 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects/mine`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
 
       await fixture.whenStable();
 
@@ -271,7 +277,7 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects/mine`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       await fixture.whenStable();
 
       // Selecciona el proyecto directamente vía el signal público (equivalente al (valueChange) del template)
@@ -281,7 +287,7 @@ describe('TasksComponent', () => {
       // que se resuelve el flush del mock, lo que crearía un deadlock).
       fixture.detectChanges();
 
-      httpMock.expectOne(`${apiUrl}/tasks/project/project-1`).flush(mockDeveloperTasks);
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`).flush({ data: mockDeveloperTasks, meta: pageMeta(mockDeveloperTasks.length) });
       await fixture.whenStable();
 
       expect(screen.getByText('Tarea propia')).toBeTruthy();
@@ -396,9 +402,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(overdueScenarioTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: overdueScenarioTasks, meta: pageMeta(overdueScenarioTasks.length) });
 
       await fixture.whenStable();
 
@@ -488,9 +494,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: filterScenarioTasks, meta: pageMeta(filterScenarioTasks.length) });
 
       await fixture.whenStable();
 
@@ -517,9 +523,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: filterScenarioTasks, meta: pageMeta(filterScenarioTasks.length) });
 
       await fixture.whenStable();
 
@@ -543,9 +549,9 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: filterScenarioTasks, meta: pageMeta(filterScenarioTasks.length) });
 
       await fixture.whenStable();
 
@@ -558,7 +564,7 @@ describe('TasksComponent', () => {
       fixture.componentInstance.allTasksResource.reload();
       fixture.detectChanges();
 
-      httpMock.expectOne(`${apiUrl}/tasks`).flush(filterScenarioTasks);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: filterScenarioTasks, meta: pageMeta(filterScenarioTasks.length) });
       await fixture.whenStable();
 
       expect(fixture.componentInstance.priorityFilter()).toBe('high');
@@ -583,13 +589,13 @@ describe('TasksComponent', () => {
       });
       httpMock = TestBed.inject(HttpTestingController);
 
-      httpMock.expectOne(`${apiUrl}/projects/mine`).flush(mockProjects);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
       await fixture.whenStable();
 
       fixture.componentInstance.selectedProjectId.set('project-1');
       fixture.detectChanges();
 
-      httpMock.expectOne(`${apiUrl}/tasks/project/project-1`).flush(mockDeveloperTasks);
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`).flush({ data: mockDeveloperTasks, meta: pageMeta(mockDeveloperTasks.length) });
       await fixture.whenStable();
 
       return fixture;
@@ -614,7 +620,8 @@ describe('TasksComponent', () => {
       // el nuevo fetch tras reload() (whenStable() aquí deadlockearía).
       fixture.detectChanges();
 
-      httpMock.expectOne(`${apiUrl}/tasks/project/project-1`).flush([{ ...ownTask, status: 'done' }, mockDeveloperTasks[1]]);
+      const reloadedTasks = [{ ...ownTask, status: 'done' as const }, mockDeveloperTasks[1]];
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`).flush({ data: reloadedTasks, meta: pageMeta(reloadedTasks.length) });
       await fixture.whenStable();
     });
 
@@ -671,10 +678,88 @@ describe('TasksComponent', () => {
       // el nuevo fetch tras reload() (whenStable() aquí deadlockearía).
       fixture.detectChanges();
 
+      const reloadedTasks = [{ ...ownTask, status: 'in_progress' as const }, mockDeveloperTasks[1]];
       httpMock
-        .expectOne(`${apiUrl}/tasks/project/project-1`)
-        .flush([{ ...ownTask, status: 'in_progress' }, mockDeveloperTasks[1]]);
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: reloadedTasks, meta: pageMeta(reloadedTasks.length) });
       await fixture.whenStable();
+    });
+  });
+
+  describe('Paginación (admin)', () => {
+    it('mantiene la página tras un .reload() (p.ej. al editar una tarea)', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(50, 1) });
+
+      await fixture.whenStable();
+
+      // Simula avanzar a la página 2 mediante el paginador
+      fixture.componentInstance.onAdminPageChange({ pageIndex: 1, pageSize: 20 } as any);
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks?page=2&limit=20`).flush({ data: mockTasks, meta: pageMeta(50, 2) });
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.adminPage()).toBe(2);
+
+      // Recarga (p.ej. tras editar una tarea) — debe pedir la misma página, no volver a la 1
+      fixture.componentInstance.allTasksResource.reload();
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks?page=2&limit=20`).flush({ data: mockTasks, meta: pageMeta(50, 2) });
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.adminPage()).toBe(2);
+    });
+
+    it('retrocede a la última página válida cuando la página actual queda vacía', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(1, 1) });
+
+      await fixture.whenStable();
+
+      fixture.componentInstance.onAdminPageChange({ pageIndex: 2, pageSize: 20 } as any);
+      fixture.detectChanges();
+
+      // La página 3 (0-based 2) no existe para total=1/limit=20 → data:[] con page=3
+      httpMock.expectOne(`${apiUrl}/tasks?page=3&limit=20`).flush({ data: [], meta: pageMeta(1, 3) });
+
+      // El efecto de recuperación de página vacía escribe adminPage de forma asíncrona
+      // (no se puede usar whenStable() aquí: el recurso queda "loading" hasta que se
+      // resuelve el fetch resultante, lo que crearía un deadlock) — sondea con detectChanges
+      // hasta que el efecto haya corrido.
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.componentInstance.adminPage()).toBe(1);
+      });
+
+      // El efecto de recuperación retrocede a totalPages=1 y dispara un nuevo fetch
+      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: mockTasks, meta: pageMeta(1, 1) });
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.adminPage()).toBe(1);
     });
   });
 });

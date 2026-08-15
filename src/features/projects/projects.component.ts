@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -22,6 +23,7 @@ import {
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatPaginatorModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],
@@ -35,11 +37,35 @@ export class ProjectsComponent {
   // Recurso reactivo de la lista — .reload() recarga los datos desde el servidor
   readonly projectsResource = this.projectsService.projects;
 
+  // Página actual (1-based) y tamaño de página — delegados al servicio para que
+  // sobrevivan a .reload() sin lógica extra de guardado/restauración
+  readonly page = this.projectsService.page;
+  readonly pageSize = this.projectsService.pageSize;
+
   // Columnas visibles en la tabla
   readonly displayedColumns = ['name', 'description', 'status', 'developers', 'actions'];
 
   // Mensaje de error de mutaciones — independiente del recurso
   readonly mutationError = signal<string | null>(null);
+
+  constructor() {
+    // Recuperación de página vacía: si el backend devuelve data:[] para una página > 1
+    // con total > 0 (p.ej. se eliminó el último ítem de la página), retrocede a la
+    // última página válida y deja que el recurso se recargue solo (page es su propia señal)
+    effect(() => {
+      const result = this.projectsResource.value();
+      if (!result) return;
+      if (result.data.length === 0 && result.meta.page > 1 && result.meta.total > 0) {
+        this.projectsService.page.set(result.meta.totalPages);
+      }
+    });
+  }
+
+  /** Maneja el cambio de página/tamaño de página del paginador de Material. */
+  onPageChange(event: PageEvent): void {
+    this.projectsService.page.set(event.pageIndex + 1);
+    this.projectsService.pageSize.set(event.pageSize);
+  }
 
   /** Abre el diálogo de creación y recarga la lista si se creó un proyecto. */
   openCreateDialog(): void {

@@ -4,6 +4,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ProjectsService } from './projects.service';
 import { environment } from '../../environments/environment';
 
+const mockProjectsList = [
+  { id: '1', name: 'Proyecto Alpha', status: 'active' as const, developers: [], createdAt: '', updatedAt: '' },
+];
+
 describe('ProjectsService', () => {
   let service: ProjectsService;
   let httpMock: HttpTestingController;
@@ -23,6 +27,38 @@ describe('ProjectsService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
+  });
+
+  describe('projects (httpResource)', () => {
+    it('should request page/limit params and expose the paginated envelope', () => {
+      // En zoneless los efectos no corren sincrónicamente — flush para que
+      // httpResource dispare la GET inicial (mismo patrón que UsersService)
+      TestBed.flushEffects();
+
+      const req = httpMock.expectOne(`${apiUrl}/projects?page=1&limit=20`);
+      expect(req.request.method).toBe('GET');
+      const mockResponse = {
+        data: mockProjectsList,
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      };
+      req.flush(mockResponse);
+    });
+
+    it('should re-request with the updated page when the page signal changes', () => {
+      TestBed.flushEffects();
+      httpMock.expectOne(`${apiUrl}/projects?page=1&limit=20`).flush({
+        data: mockProjectsList,
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      });
+
+      service.page.set(2);
+      TestBed.flushEffects();
+
+      httpMock.expectOne(`${apiUrl}/projects?page=2&limit=20`).flush({
+        data: [],
+        meta: { total: 1, page: 2, limit: 20, totalPages: 1 },
+      });
+    });
   });
 
   describe('createProject', () => {

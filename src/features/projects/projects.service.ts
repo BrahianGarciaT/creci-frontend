@@ -1,7 +1,8 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { Paginated } from '../../shared/models/paginated';
 import { User } from '../users/users.service';
 
 // Representación de un proyecto tal como lo devuelve la API
@@ -37,8 +38,16 @@ export class ProjectsService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
+  // Página actual (1-based) y tamaño de página del listado — viven junto al recurso
+  // para que .reload() re-ejecute la misma computación de request sin tocarlos
+  readonly page = signal(1);
+  readonly pageSize = signal(20);
+
   // Recurso reactivo que carga la lista de proyectos — se recarga con .reload()
-  readonly projects = httpResource<Project[]>(() => ({ url: `${this.apiUrl}/projects` }));
+  readonly projects = httpResource<Paginated<Project>>(() => ({
+    url: `${this.apiUrl}/projects`,
+    params: { page: this.page(), limit: this.pageSize() },
+  }));
 
   /**
    * Crea un nuevo proyecto en el sistema.
