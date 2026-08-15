@@ -1,0 +1,67 @@
+<div class="kanban-board" cdkDropListGroup>
+  @for (column of columns(); track column.status) {
+    <div class="kanban-column" [class.kanban-column--readonly]="!column.droppable">
+      <h3 class="kanban-column__title">
+        {{ column.label }}
+        <span class="kanban-column__count">{{ column.tasks.length }}</span>
+      </h3>
+
+      <div
+        class="kanban-column__list"
+        cdkDropList
+        [id]="dropListId(column.status)"
+        [cdkDropListData]="column.tasks"
+        [cdkDropListDisabled]="!column.droppable"
+        (cdkDropListDropped)="drop($event)"
+      >
+        @if (column.tasks.length === 0) {
+          <p class="kanban-column__empty">Sin tareas</p>
+        }
+
+        @for (task of column.tasks; track task.id) {
+          <div
+            class="kanban-card"
+            cdkDrag
+            [cdkDragData]="task"
+            [cdkDragDisabled]="isCardDragDisabled(task, column)"
+            [attr.data-task-id]="task.id"
+          >
+            <div class="kanban-card__body" cdkDragHandle>
+              <span class="kanban-card__title">{{ task.title }}</span>
+              <span
+                class="priority-badge"
+                [class.priority-badge--high]="task.priority === 'high'"
+                [class.priority-badge--medium]="task.priority === 'medium'"
+                [class.priority-badge--low]="task.priority === 'low'"
+              >
+                {{ task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja' }}
+              </span>
+              @if (task.assignee) {
+                <span class="kanban-card__assignee">{{ task.assignee.email }}</span>
+              }
+            </div>
+
+            <button
+              mat-icon-button
+              class="kanban-card__menu-trigger"
+              [matMenuTriggerFor]="statusMenu"
+              [attr.aria-label]="'Cambiar estado de ' + task.title"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+
+            <mat-menu #statusMenu="matMenu">
+              @for (target of transitionTargets(column.status); track target) {
+                <button mat-menu-item (click)="requestStatusChange(task, target)">
+                  {{ statusLabel(target) }}
+                </button>
+              } @empty {
+                <button mat-menu-item disabled>Sin cambios disponibles</button>
+              }
+            </mat-menu>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -9,6 +9,7 @@ import {
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -17,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
+import { UiPreferencesService, TasksViewMode } from '../../core/services/ui-preferences.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
@@ -41,6 +43,16 @@ import {
   EditTaskDialogComponent,
   EditTaskDialogData,
 } from './edit-task-dialog.component';
+import { KanbanColumn, TasksKanbanBoardComponent } from './tasks-kanban-board.component';
+
+// Definición de las 4 columnas fijas del tablero kanban, en orden de visualización.
+// `cancelled` es la única no-droppable (de solo lectura total).
+const KANBAN_COLUMN_DEFS: readonly Omit<KanbanColumn, 'tasks'>[] = [
+  { status: 'todo', label: 'Pendiente', droppable: true },
+  { status: 'in_progress', label: 'En progreso', droppable: true },
+  { status: 'done', label: 'Completada', droppable: true },
+  { status: 'cancelled', label: 'Cancelada', droppable: false },
+];
 
 @Component({
   selector: 'app-tasks',
@@ -49,12 +61,14 @@ import {
   imports: [
     MatTableModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatPaginatorModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
     DatePipe,
+    TasksKanbanBoardComponent,
   ],
   templateUrl: './tasks.component.html',
   styleUrl: './tasks.component.scss',
@@ -63,6 +77,7 @@ export class TasksComponent {
   private readonly authService = inject(AuthService);
   private readonly tasksService = inject(TasksService);
   private readonly dialog = inject(MatDialog);
+  private readonly uiPreferences = inject(UiPreferencesService);
   private readonly apiUrl = environment.apiUrl;
 
   // Medianoche local capturada en la construcción — hace determinista isOverdue() en tests
@@ -159,6 +174,27 @@ export class TasksComponent {
   // Columnas de la tabla — varían según el rol
   readonly adminColumns = ['title', 'priority', 'status', 'project', 'assignee', 'dueDate', 'actions'];
   readonly developerColumns = ['title', 'priority', 'status', 'project', 'assignee', 'statusAction', 'estimateAction'];
+
+  // Modo de vista de la tabla de tareas del desarrollador (list | kanban), hidratado desde localStorage
+  readonly viewMode = signal<TasksViewMode>(this.uiPreferences.getTasksViewMode());
+
+  // Overlay optimista de un movimiento de kanban pendiente de confirmación/mutación — se
+  // aplica dentro de `developerTasksByStatus` y se limpia al confirmar/errar/cancelar (revert).
+  // No se usa `transferArrayItem` de CDK: el overlay declarativo hace el revert un simple set(null).
+  readonly pendingMove = signal<{ taskId: string; to: TaskStatus } | null>(null);
+
+  // Agrupa la página actual de `developerTasksResource` en las 4 columnas fijas del kanban,
+  // aplicando el overlay de `pendingMove` antes de filtrar por columna.
+  readonly developerTasksByStatus = computed<KanbanColumn[]>(() => {
+    const move = this.pendingMove();
+    const tasks = (this.developerTasksResource.value()?.data ?? []).map((t) =>
+      move && t.id === move.taskId ? { ...t, status: move.to } : t
+    );
+    return KANBAN_COLUMN_DEFS.map((def) => ({
+      ...def,
+      tasks: tasks.filter((t) => t.status === def.status),
+    }));
+  });
 
   // ID de la tarea pendiente de cancelación (confirmación inline)
   readonly pendingCancelId = signal<string | null>(null);
@@ -278,6 +314,8 @@ export class TasksComponent {
 
     this.tasksService.updateStatus(task.id, payload).subscribe({
       next: () => {
+        // Limpia cualquier overlay optimista de kanban pendiente: la recarga trae el estado real
+        this.pendingMove.set(null);
         this.developerTasksResource.reload();
       },
       error: () => {
@@ -285,6 +323,30 @@ export class TasksComponent {
         revert?.();
       },
     });
+  }
+
+  /** Cambia el modo de vista (list | kanban) y persiste la preferencia */
+  setViewMode(mode: TasksViewMode): void {
+    this.viewMode.set(mode);
+    this.uiPreferences.setTasksViewMode(mode);
+  }
+
+  /** Determina si una tarjeta del kanban puede arrastrarse/editarse (solo tareas propias) */
+  readonly canDragTask = (task: Task): boolean => this.isOwnTask(task);
+
+  /**
+   * Recibe el intent de cambio de estado emitido por el tablero kanban (drag o menú
+   * de accesibilidad). Ignora drops al mismo estado o a un destino no permitido por
+   * drag (`cancelled` nunca llega aquí porque su columna no es droppable, pero se
+   * valida igual por defensa en profundidad). Aplica el overlay optimista y reutiliza
+   * `updateTaskStatus` (incluida la confirmación de "done"); el revert limpia el overlay.
+   */
+  onKanbanStatusChange({ task, status }: { task: Task; status: TaskStatus }): void {
+    if (task.status === status) return;
+    if (status !== 'todo' && status !== 'in_progress' && status !== 'done') return;
+
+    this.pendingMove.set({ taskId: task.id, to: status });
+    this.updateTaskStatus(task, status, () => this.pendingMove.set(null));
   }
 
   /** Actualiza las horas estimadas de una tarea (desarrollador — solo tareas propias) */
