@@ -343,7 +343,7 @@
                     #statusSelect
                     [value]="row.status"
                     [disabled]="row.status === 'done'"
-                    (valueChange)="updateTaskStatus(row, $event, statusSelect)"
+                    (valueChange)="updateTaskStatus(row, $event, () => (statusSelect.value = row.status))"
                     aria-label="Cambiar estado de la tarea"
                     class="status-select"
                   >
