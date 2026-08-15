@@ -38,14 +38,14 @@
 
   <!-- Tabla de proyectos -->
   @if (!projectsResource.isLoading() && !projectsResource.error()) {
-    @if ((projectsResource.value() ?? []).length === 0) {
+    @if ((projectsResource.value()?.data ?? []).length === 0) {
       <!-- Estado vacío -->
       <div class="projects-empty" aria-label="Sin proyectos">
         <mat-icon class="projects-empty__icon">folder_open</mat-icon>
         <p class="projects-empty__text">No hay proyectos registrados. Crea el primero.</p>
       </div>
     } @else {
-      <mat-table [dataSource]="projectsResource.value() ?? []" class="projects-table" aria-label="Tabla de proyectos">
+      <mat-table [dataSource]="projectsResource.value()?.data ?? []" class="projects-table" aria-label="Tabla de proyectos">
         <!-- Columna nombre -->
         <ng-container matColumnDef="name">
           <mat-header-cell *matHeaderCellDef>Nombre</mat-header-cell>
@@ -137,6 +137,15 @@
         <mat-header-row *matHeaderRowDef="displayedColumns" />
         <mat-row *matRowDef="let row; columns: displayedColumns" />
       </mat-table>
+
+      <mat-paginator
+        [length]="projectsResource.value()?.meta?.total ?? 0"
+        [pageSize]="pageSize()"
+        [pageIndex]="page() - 1"
+        [pageSizeOptions]="[20]"
+        (page)="onPageChange($event)"
+        aria-label="Paginación de proyectos"
+      />
     }
   }
 </div>

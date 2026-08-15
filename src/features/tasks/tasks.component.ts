@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -10,6 +11,7 @@ import { httpResource } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
@@ -18,6 +20,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
+import { Paginated } from '../../shared/models/paginated';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -47,6 +50,7 @@ import {
     MatTableModule,
     MatButtonModule,
     MatIconModule,
+    MatPaginatorModule,
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
@@ -67,6 +71,27 @@ export class TasksComponent {
   constructor() {
     const now = new Date();
     this.todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Recuperación de página vacía (admin): si el backend devuelve data:[] para una
+    // página > 1 con total > 0, retrocede a la última página válida. El propio
+    // signal de página dispara la recarga del recurso, sin lógica extra de reload().
+    effect(() => {
+      const result = this.allTasksResource.value();
+      if (!result) return;
+      if (result.data.length === 0 && result.meta.page > 1 && result.meta.total > 0) {
+        this.adminPage.set(result.meta.totalPages);
+      }
+    });
+
+    // Recuperación de página vacía (developer) — mismo criterio que el admin, aplicado
+    // a la tabla de tareas del proyecto seleccionado.
+    effect(() => {
+      const result = this.developerTasksResource.value();
+      if (!result) return;
+      if (result.data.length === 0 && result.meta.page > 1 && result.meta.total > 0) {
+        this.developerPage.set(result.meta.totalPages);
+      }
+    });
   }
 
   // Usuario autenticado actual
@@ -75,32 +100,48 @@ export class TasksComponent {
   // Indica si el usuario es administrador
   readonly isAdmin = computed(() => this.currentUser()?.role === 'admin');
 
-  // Proyectos: admin carga todos, developer carga solo los suyos
-  readonly projectsResource = httpResource<Project[]>(() =>
+  // Proyectos: admin carga todos, developer carga solo los suyos. Es una fuente de
+  // dropdown/diálogo (no una tabla paginada), por eso queda capada en limit=100 sin paginador.
+  readonly projectsResource = httpResource<Paginated<Project>>(() =>
     this.isAdmin()
-      ? { url: `${this.apiUrl}/projects` }
-      : { url: `${this.apiUrl}/projects/mine` }
+      ? { url: `${this.apiUrl}/projects`, params: { limit: 100 } }
+      : { url: `${this.apiUrl}/projects/mine`, params: { limit: 100 } }
   );
 
-  // Usuarios: solo el admin los necesita (para los diálogos de asignación)
+  // Usuarios: solo el admin los necesita (para los diálogos de asignación) — endpoint no paginado
   readonly usersResource = httpResource<User[]>(() =>
     this.isAdmin() ? { url: `${this.apiUrl}/users` } : undefined
   );
 
+  // Página actual (1-based) y tamaño de página de la tabla admin de tareas
+  readonly adminPage = signal(1);
+  readonly adminPageSize = signal(20);
+
   // Recurso reactivo de tareas para el admin (lista completa — solo se dispara si es admin)
-  readonly allTasksResource = httpResource<Task[]>(() =>
-    this.isAdmin() ? { url: `${this.apiUrl}/tasks` } : undefined
-  );
+  readonly allTasksResource = httpResource<Paginated<Task>>(() => {
+    if (!this.isAdmin()) return undefined;
+    return {
+      url: `${this.apiUrl}/tasks`,
+      params: { page: this.adminPage(), limit: this.adminPageSize() },
+    };
+  });
 
   // ID del proyecto seleccionado para la vista de desarrollador
   readonly selectedProjectId = signal<string>('');
 
+  // Página actual (1-based) y tamaño de página de la tabla de tareas del desarrollador
+  readonly developerPage = signal(1);
+  readonly developerPageSize = signal(20);
+
   // Recurso reactivo para tareas del proyecto del desarrollador
   // Se inicializa vacío y se actualiza cuando el desarrollador selecciona un proyecto
-  readonly developerTasksResource = httpResource<Task[]>(() => {
+  readonly developerTasksResource = httpResource<Paginated<Task>>(() => {
     const projectId = this.selectedProjectId();
     if (!projectId) return undefined;
-    return { url: `${environment.apiUrl}/tasks/project/${projectId}` };
+    return {
+      url: `${environment.apiUrl}/tasks/project/${projectId}`,
+      params: { page: this.developerPage(), limit: this.developerPageSize() },
+    };
   });
 
   // Columnas de la tabla — varían según el rol
@@ -111,9 +152,10 @@ export class TasksComponent {
   readonly statusFilter = signal<TaskStatus | 'all'>('all');
   readonly priorityFilter = signal<TaskPriority | 'all'>('all');
 
-  // Lista admin filtrada por estado/prioridad
+  // Lista admin filtrada por estado/prioridad — filtra en cliente sobre la página
+  // actual (el filtrado server-side llega en un cambio posterior)
   readonly filteredAdminTasks = computed<Task[]>(() => {
-    const tasks = this.allTasksResource.value() ?? [];
+    const tasks = this.allTasksResource.value()?.data ?? [];
     const status = this.statusFilter();
     const priority = this.priorityFilter();
     return tasks.filter((task) => {
@@ -133,7 +175,7 @@ export class TasksComponent {
   readonly developerProjects = computed(() => {
     const userId = this.currentUser()?.id;
     if (!userId) return [];
-    return (this.projectsResource.value() ?? []).filter((p) =>
+    return (this.projectsResource.value()?.data ?? []).filter((p) =>
       p.developers.some((d) => d.id === userId)
     );
   });
@@ -141,7 +183,7 @@ export class TasksComponent {
   /** Abre el diálogo de creación de tarea (solo admin) */
   openCreateDialog(): void {
     const dialogData: CreateTaskDialogData = {
-      projects: this.projectsResource.value() ?? [],
+      projects: this.projectsResource.value()?.data ?? [],
       users: this.usersResource.value() ?? [],
     };
 
@@ -162,7 +204,7 @@ export class TasksComponent {
   openEditDialog(task: Task): void {
     const dialogData: EditTaskDialogData = {
       task,
-      projects: this.projectsResource.value() ?? [],
+      projects: this.projectsResource.value()?.data ?? [],
       users: this.usersResource.value() ?? [],
     };
 
@@ -265,6 +307,18 @@ export class TasksComponent {
         this.mutationError.set('Error al actualizar las horas estimadas. Intenta nuevamente.');
       },
     });
+  }
+
+  /** Maneja el cambio de página/tamaño de página del paginador de la tabla admin. */
+  onAdminPageChange(event: PageEvent): void {
+    this.adminPage.set(event.pageIndex + 1);
+    this.adminPageSize.set(event.pageSize);
+  }
+
+  /** Maneja el cambio de página/tamaño de página del paginador de la tabla developer. */
+  onDeveloperPageChange(event: PageEvent): void {
+    this.developerPage.set(event.pageIndex + 1);
+    this.developerPageSize.set(event.pageSize);
   }
 
   /** Verifica si una tarea pertenece al usuario autenticado */

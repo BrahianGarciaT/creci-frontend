@@ -59,7 +59,7 @@
 
     <!-- Tabla de tareas (admin) -->
     @if (!allTasksResource.isLoading() && !allTasksResource.error()) {
-      @if ((allTasksResource.value() ?? []).length === 0) {
+      @if ((allTasksResource.value()?.data ?? []).length === 0) {
         <div class="tasks-empty" aria-label="Sin tareas">
           <mat-icon class="tasks-empty__icon">checklist</mat-icon>
           <p class="tasks-empty__text">No hay tareas registradas. Crea la primera.</p>
@@ -93,7 +93,7 @@
         </div>
       }
 
-      @if ((allTasksResource.value() ?? []).length > 0 && filteredAdminTasks().length === 0) {
+      @if ((allTasksResource.value()?.data ?? []).length > 0 && filteredAdminTasks().length === 0) {
         <div class="tasks-empty" aria-label="Sin resultados de filtro">
           <mat-icon class="tasks-empty__icon">filter_alt_off</mat-icon>
           <p class="tasks-empty__text">Ningún resultado coincide con los filtros seleccionados.</p>
@@ -226,6 +226,15 @@
           <mat-header-row *matHeaderRowDef="adminColumns" />
           <mat-row *matRowDef="let row; columns: adminColumns" />
         </mat-table>
+
+        <mat-paginator
+          [length]="allTasksResource.value()?.meta?.total ?? 0"
+          [pageSize]="adminPageSize()"
+          [pageIndex]="adminPage() - 1"
+          [pageSizeOptions]="[20]"
+          (page)="onAdminPageChange($event)"
+          aria-label="Paginación de tareas"
+        />
       }
     }
   }
@@ -266,14 +275,14 @@
 
       <!-- Tabla de tareas (desarrollador) -->
       @if (!developerTasksResource.isLoading() && !developerTasksResource.error()) {
-        @if ((developerTasksResource.value() ?? []).length === 0) {
+        @if ((developerTasksResource.value()?.data ?? []).length === 0) {
           <div class="tasks-empty" aria-label="Sin tareas en el proyecto">
             <mat-icon class="tasks-empty__icon">checklist</mat-icon>
             <p class="tasks-empty__text">No hay tareas en este proyecto.</p>
           </div>
         } @else {
           <mat-table
-            [dataSource]="developerTasksResource.value() ?? []"
+            [dataSource]="developerTasksResource.value()?.data ?? []"
             class="tasks-table"
             aria-label="Tabla de tareas del proyecto"
           >
@@ -375,6 +384,15 @@
             <mat-header-row *matHeaderRowDef="developerColumns" />
             <mat-row *matRowDef="let row; columns: developerColumns" />
           </mat-table>
+
+          <mat-paginator
+            [length]="developerTasksResource.value()?.meta?.total ?? 0"
+            [pageSize]="developerPageSize()"
+            [pageIndex]="developerPage() - 1"
+            [pageSizeOptions]="[20]"
+            (page)="onDeveloperPageChange($event)"
+            aria-label="Paginación de tareas del proyecto"
+          />
         }
       }
     }

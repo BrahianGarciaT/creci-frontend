@@ -20,8 +20,13 @@ const mockProjects = [
   },
 ];
 
+const mockPaginatedProjects = {
+  data: mockProjects,
+  meta: { total: mockProjects.length, page: 1, limit: 20, totalPages: 1 },
+};
+
 const mockResource = {
-  value: signal(mockProjects),
+  value: signal(mockPaginatedProjects),
   isLoading: signal(false),
   error: signal(undefined),
   reload: vi.fn(),
@@ -29,6 +34,8 @@ const mockResource = {
 
 const mockProjectsService = {
   projects: mockResource,
+  page: signal(1),
+  pageSize: signal(20),
   deactivateProject: vi.fn(() => of({})),
   reactivateProject: vi.fn(() => of({})),
 };
@@ -48,6 +55,9 @@ describe('ProjectsComponent', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockDialog.open.mockReturnValue(mockDialogRef);
+    mockResource.value.set(mockPaginatedProjects);
+    mockProjectsService.page.set(1);
+    mockProjectsService.pageSize.set(20);
 
     await TestBed.configureTestingModule({
       imports: [ProjectsComponent, NoopAnimationsModule],
@@ -143,6 +153,41 @@ describe('ProjectsComponent', () => {
       expect(mockDialog.open).not.toHaveBeenCalled();
       expect(mockProjectsService.reactivateProject).toHaveBeenCalledWith('1');
       expect(mockResource.reload).toHaveBeenCalled();
+    });
+  });
+
+  describe('paginación', () => {
+    it('onPageChange actualiza page (1-based) y pageSize en el servicio', () => {
+      component.onPageChange({ pageIndex: 2, pageSize: 50 } as never);
+
+      expect(mockProjectsService.page()).toBe(3);
+      expect(mockProjectsService.pageSize()).toBe(50);
+    });
+
+    it('retrocede a la última página válida cuando la página actual queda vacía', async () => {
+      mockProjectsService.page.set(3);
+      mockResource.value.set({
+        data: [],
+        meta: { total: 5, page: 3, limit: 20, totalPages: 1 },
+      });
+
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockProjectsService.page()).toBe(1);
+    });
+
+    it('no retrocede cuando el total es cero (estado vacío genuino)', async () => {
+      mockProjectsService.page.set(1);
+      mockResource.value.set({
+        data: [],
+        meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+      });
+
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockProjectsService.page()).toBe(1);
     });
   });
 });
