@@ -483,7 +483,7 @@ describe('TasksComponent', () => {
       },
     ];
 
-    it('filtra la lista en cliente sin disparar peticiones de red adicionales', async () => {
+    it('el cambio de filtro de estado dispara una nueva petición con el status como query param', async () => {
       const { fixture } = await render(TasksComponent, {
         providers: [
           provideHttpClient(),
@@ -501,15 +501,60 @@ describe('TasksComponent', () => {
       await fixture.whenStable();
 
       const component = fixture.componentInstance;
-      expect(component.filteredAdminTasks().length).toBe(3);
-
-      component.statusFilter.set('todo');
+      component.setStatusFilter('todo');
       fixture.detectChanges();
 
-      // httpMock.verify() en afterEach fallaría si el filtro disparase una petición nueva
-      expect(component.filteredAdminTasks().length).toBe(1);
+      const filtered = [filterScenarioTasks[0]];
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20&status=todo`)
+        .flush({ data: filtered, meta: pageMeta(filtered.length) });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
       expect(screen.getByText('Todo alta')).toBeTruthy();
       expect(screen.queryByText('Progreso media')).toBeNull();
+    });
+
+    it('cambiar el filtro estando en una página distinta de 1 resetea la página a 1', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20`)
+        .flush({ data: filterScenarioTasks, meta: pageMeta(50, 1) });
+
+      await fixture.whenStable();
+
+      const component = fixture.componentInstance;
+      component.onAdminPageChange({ pageIndex: 1, pageSize: 20, length: 50 });
+      fixture.detectChanges();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=2&limit=20`)
+        .flush({ data: filterScenarioTasks, meta: pageMeta(50, 2) });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(component.adminPage()).toBe(2);
+
+      component.setPriorityFilter('high');
+      fixture.detectChanges();
+
+      expect(component.adminPage()).toBe(1);
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20&priority=high`)
+        .flush({ data: [filterScenarioTasks[0]], meta: pageMeta(1) });
+      await fixture.whenStable();
     });
 
     it('muestra un mensaje de "sin resultados" distinto del estado vacío genuino', async () => {
@@ -529,7 +574,13 @@ describe('TasksComponent', () => {
 
       await fixture.whenStable();
 
-      fixture.componentInstance.statusFilter.set('cancelled');
+      fixture.componentInstance.setStatusFilter('cancelled');
+      fixture.detectChanges();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20&status=cancelled`)
+        .flush({ data: [], meta: pageMeta(0) });
+      await fixture.whenStable();
       fixture.detectChanges();
 
       expect(
@@ -555,20 +606,27 @@ describe('TasksComponent', () => {
 
       await fixture.whenStable();
 
-      fixture.componentInstance.priorityFilter.set('high');
+      fixture.componentInstance.setPriorityFilter('high');
       fixture.detectChanges();
 
-      expect(fixture.componentInstance.filteredAdminTasks().length).toBe(1);
+      const filtered = [filterScenarioTasks[0]];
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20&priority=high`)
+        .flush({ data: filtered, meta: pageMeta(filtered.length) });
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.priorityFilter()).toBe('high');
 
       // Simula una recarga (p.ej. tras cerrar un diálogo de edición con resultado)
       fixture.componentInstance.allTasksResource.reload();
       fixture.detectChanges();
 
-      httpMock.expectOne(`${apiUrl}/tasks?page=1&limit=20`).flush({ data: filterScenarioTasks, meta: pageMeta(filterScenarioTasks.length) });
+      httpMock
+        .expectOne(`${apiUrl}/tasks?page=1&limit=20&priority=high`)
+        .flush({ data: filtered, meta: pageMeta(filtered.length) });
       await fixture.whenStable();
 
       expect(fixture.componentInstance.priorityFilter()).toBe('high');
-      expect(fixture.componentInstance.filteredAdminTasks().length).toBe(1);
     });
   });
 

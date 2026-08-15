@@ -117,13 +117,25 @@ export class TasksComponent {
   readonly adminPage = signal(1);
   readonly adminPageSize = signal(20);
 
-  // Recurso reactivo de tareas para el admin (lista completa — solo se dispara si es admin)
+  // Filtros de la tabla admin — signals leídos dentro de la composición del request,
+  // igual que adminPage/adminPageSize: sobreviven a .reload() sin lógica extra.
+  readonly statusFilter = signal<TaskStatus | 'all'>('all');
+  readonly priorityFilter = signal<TaskPriority | 'all'>('all');
+
+  // Recurso reactivo de tareas para el admin (lista completa — solo se dispara si es admin).
+  // status/priority se omiten del request cuando están en 'all' (el backend rechaza con 400
+  // el valor centinela 'all' vía @IsEnum).
   readonly allTasksResource = httpResource<Paginated<Task>>(() => {
     if (!this.isAdmin()) return undefined;
-    return {
-      url: `${this.apiUrl}/tasks`,
-      params: { page: this.adminPage(), limit: this.adminPageSize() },
+    const params: Record<string, string | number> = {
+      page: this.adminPage(),
+      limit: this.adminPageSize(),
     };
+    const status = this.statusFilter();
+    if (status !== 'all') params['status'] = status;
+    const priority = this.priorityFilter();
+    if (priority !== 'all') params['priority'] = priority;
+    return { url: `${this.apiUrl}/tasks`, params };
   });
 
   // ID del proyecto seleccionado para la vista de desarrollador
@@ -147,23 +159,6 @@ export class TasksComponent {
   // Columnas de la tabla — varían según el rol
   readonly adminColumns = ['title', 'priority', 'status', 'project', 'assignee', 'dueDate', 'actions'];
   readonly developerColumns = ['title', 'priority', 'status', 'project', 'assignee', 'statusAction', 'estimateAction'];
-
-  // Filtros de la tabla admin (solo cliente, no disparan peticiones de red)
-  readonly statusFilter = signal<TaskStatus | 'all'>('all');
-  readonly priorityFilter = signal<TaskPriority | 'all'>('all');
-
-  // Lista admin filtrada por estado/prioridad — filtra en cliente sobre la página
-  // actual (el filtrado server-side llega en un cambio posterior)
-  readonly filteredAdminTasks = computed<Task[]>(() => {
-    const tasks = this.allTasksResource.value()?.data ?? [];
-    const status = this.statusFilter();
-    const priority = this.priorityFilter();
-    return tasks.filter((task) => {
-      if (status !== 'all' && task.status !== status) return false;
-      if (priority !== 'all' && task.priority !== priority) return false;
-      return true;
-    });
-  });
 
   // ID de la tarea pendiente de cancelación (confirmación inline)
   readonly pendingCancelId = signal<string | null>(null);
@@ -307,6 +302,18 @@ export class TasksComponent {
         this.mutationError.set('Error al actualizar las horas estimadas. Intenta nuevamente.');
       },
     });
+  }
+
+  /** Cambia el filtro de estado y resetea la página admin a la primera. */
+  setStatusFilter(value: TaskStatus | 'all'): void {
+    this.statusFilter.set(value);
+    this.adminPage.set(1);
+  }
+
+  /** Cambia el filtro de prioridad y resetea la página admin a la primera. */
+  setPriorityFilter(value: TaskPriority | 'all'): void {
+    this.priorityFilter.set(value);
+    this.adminPage.set(1);
   }
 
   /** Maneja el cambio de página/tamaño de página del paginador de la tabla admin. */
