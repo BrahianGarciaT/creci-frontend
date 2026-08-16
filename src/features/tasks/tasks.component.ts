@@ -13,7 +13,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelect, MatSelectModule } from '@angular/material/select';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
@@ -242,7 +242,7 @@ export class TasksComponent {
   }
 
   /** Actualiza el estado de una tarea (desarrollador — solo tareas propias) */
-  updateTaskStatus(task: Task, status: TaskStatus, selectRef?: MatSelect): void {
+  updateTaskStatus(task: Task, status: TaskStatus, revert?: () => void): void {
     if (status === 'cancelled') return;
 
     if (status === 'done') {
@@ -261,19 +261,19 @@ export class TasksComponent {
 
       dialogRef.afterClosed().subscribe((confirmed) => {
         if (confirmed) {
-          this.submitTaskStatus(task, status, selectRef);
-        } else if (selectRef) {
-          selectRef.value = task.status;
+          this.submitTaskStatus(task, status, revert);
+        } else {
+          revert?.();
         }
       });
       return;
     }
 
-    this.submitTaskStatus(task, status, selectRef);
+    this.submitTaskStatus(task, status, revert);
   }
 
-  /** Envía la actualización de estado al backend y revierte el select en caso de error */
-  private submitTaskStatus(task: Task, status: TaskStatus, selectRef?: MatSelect): void {
+  /** Envía la actualización de estado al backend e invoca el callback de reversión en caso de error */
+  private submitTaskStatus(task: Task, status: TaskStatus, revert?: () => void): void {
     const payload: UpdateStatusPayload = { status: status as 'todo' | 'in_progress' | 'done' };
 
     this.tasksService.updateStatus(task.id, payload).subscribe({
@@ -282,9 +282,7 @@ export class TasksComponent {
       },
       error: () => {
         this.mutationError.set('Error al actualizar el estado. Intenta nuevamente.');
-        if (selectRef) {
-          selectRef.value = task.status;
-        }
+        revert?.();
       },
     });
   }

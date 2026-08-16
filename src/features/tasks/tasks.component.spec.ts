@@ -664,9 +664,9 @@ describe('TasksComponent', () => {
       const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
       const fixture = await setupDeveloperView(mockDialog);
-      const selectStub = { value: ownTask.status } as any;
+      const revert = vi.fn();
 
-      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', revert);
 
       expect(mockDialog.open).toHaveBeenCalled();
 
@@ -688,12 +688,12 @@ describe('TasksComponent', () => {
       const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
       const fixture = await setupDeveloperView(mockDialog);
-      const selectStub = { value: 'done' } as any;
+      const revert = vi.fn();
 
-      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', revert);
 
       expect(mockDialog.open).toHaveBeenCalled();
-      expect(selectStub.value).toBe(ownTask.status);
+      expect(revert).toHaveBeenCalled();
 
       httpMock.verify();
     });
@@ -703,16 +703,16 @@ describe('TasksComponent', () => {
       const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
 
       const fixture = await setupDeveloperView(mockDialog);
-      const selectStub = { value: 'done' } as any;
+      const revert = vi.fn();
 
-      fixture.componentInstance.updateTaskStatus(ownTask, 'done', selectStub);
+      fixture.componentInstance.updateTaskStatus(ownTask, 'done', revert);
 
       httpMock
         .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
         .flush('error', { status: 400, statusText: 'Bad Request' });
       await fixture.whenStable();
 
-      expect(selectStub.value).toBe(ownTask.status);
+      expect(revert).toHaveBeenCalled();
       expect(
         screen.getByText('Error al actualizar el estado. Intenta nuevamente.'),
       ).toBeTruthy();
@@ -722,9 +722,9 @@ describe('TasksComponent', () => {
       const mockDialog = { open: vi.fn() };
 
       const fixture = await setupDeveloperView(mockDialog);
-      const selectStub = { value: 'todo' } as any;
+      const revert = vi.fn();
 
-      fixture.componentInstance.updateTaskStatus(ownTask, 'in_progress', selectStub);
+      fixture.componentInstance.updateTaskStatus(ownTask, 'in_progress', revert);
 
       expect(mockDialog.open).not.toHaveBeenCalled();
 
