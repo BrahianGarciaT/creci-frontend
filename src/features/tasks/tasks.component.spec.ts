@@ -13,6 +13,7 @@ import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { PageMeta } from '../../shared/models/paginated';
 import { AuthService, CurrentUser } from '../../core/services/auth.service';
+import { UiPreferencesService, TasksViewMode } from '../../core/services/ui-preferences.service';
 import { environment } from '../../environments/environment';
 
 const apiUrl = environment.apiUrl;
@@ -155,6 +156,10 @@ describe('TasksComponent', () => {
       expect(screen.getByText('Tarea de administrador')).toBeTruthy();
       expect(screen.getByRole('button', { name: /editar tarea de administrador/i })).toBeTruthy();
       expect(screen.getByRole('button', { name: /cancelar tarea tarea de administrador/i })).toBeTruthy();
+
+      // La vista admin no gana el toggle lista/kanban ni el tablero — es exclusivo de developer
+      expect(screen.queryByRole('group', { name: /modo de vista de tareas/i })).toBeNull();
+      expect(screen.queryByText(/el tablero muestra solo las tareas de la página actual/i)).toBeNull();
     });
 
     it('debe abrir el diálogo de creación y recargar la lista al cerrar con resultado', async () => {
@@ -747,6 +752,150 @@ describe('TasksComponent', () => {
         .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
         .flush({ data: reloadedTasks, meta: pageMeta(reloadedTasks.length) });
       await fixture.whenStable();
+    });
+  });
+
+  describe('Vista kanban (developer)', () => {
+    // UiPreferencesService falso — permite controlar la hidratación inicial y espiar la persistencia
+    const buildFakeUiPreferences = (initialMode: TasksViewMode = 'list') => ({
+      getTasksViewMode: vi.fn().mockReturnValue(initialMode),
+      setTasksViewMode: vi.fn(),
+    });
+
+    const setupDeveloperKanban = async (
+      fakeUiPreferences: ReturnType<typeof buildFakeUiPreferences>,
+      mockDialog: { open: ReturnType<typeof vi.fn> } = { open: vi.fn() },
+    ) => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+          { provide: UiPreferencesService, useValue: fakeUiPreferences },
+          { provide: MatDialog, useValue: mockDialog },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      await fixture.whenStable();
+
+      fixture.componentInstance.selectedProjectId.set('project-1');
+      fixture.detectChanges();
+
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`).flush({ data: mockDeveloperTasks, meta: pageMeta(mockDeveloperTasks.length) });
+      await fixture.whenStable();
+
+      return fixture;
+    };
+
+    it('hidrata el modo de vista desde UiPreferencesService al iniciar', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      expect(fakeUiPreferences.getTasksViewMode).toHaveBeenCalled();
+      expect(fixture.componentInstance.viewMode()).toBe('kanban');
+    });
+
+    it('el toggle cambia la vista renderizada y persiste la preferencia', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('list');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      expect(screen.getByRole('table', { name: /tabla de tareas del proyecto/i })).toBeTruthy();
+
+      fixture.componentInstance.setViewMode('kanban');
+      fixture.detectChanges();
+
+      expect(fakeUiPreferences.setTasksViewMode).toHaveBeenCalledWith('kanban');
+      expect(screen.queryByRole('table', { name: /tabla de tareas del proyecto/i })).toBeNull();
+    });
+
+    it('agrupa la página actual en las 4 columnas fijas, incluida "cancelled" vacía', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      const columns = fixture.componentInstance.developerTasksByStatus();
+      expect(columns.map((c) => c.status)).toEqual(['todo', 'in_progress', 'done', 'cancelled']);
+
+      const todoColumn = columns.find((c) => c.status === 'todo')!;
+      const inProgressColumn = columns.find((c) => c.status === 'in_progress')!;
+      const doneColumn = columns.find((c) => c.status === 'done')!;
+      const cancelledColumn = columns.find((c) => c.status === 'cancelled')!;
+
+      expect(todoColumn.tasks.map((t) => t.id)).toEqual(['task-own']);
+      expect(inProgressColumn.tasks.map((t) => t.id)).toEqual(['task-other']);
+      expect(doneColumn.tasks.map((t) => t.id)).toEqual(['task-own-done']);
+      expect(cancelledColumn.tasks).toEqual([]);
+    });
+
+    it('onKanbanStatusChange para todo → in_progress envía PATCH vía la mutación existente', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      const ownTask = mockDeveloperTasks[0]; // status: 'todo'
+      fixture.componentInstance.onKanbanStatusChange({ task: ownTask, status: 'in_progress' });
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
+        .flush({ ...ownTask, status: 'in_progress' });
+
+      // Fuerza el flush síncrono de los efectos pendientes para que el resource despache
+      // el nuevo fetch tras reload() (whenStable() aquí deadlockearía).
+      fixture.detectChanges();
+
+      const reloadedTasks = [{ ...ownTask, status: 'in_progress' as const }, mockDeveloperTasks[1], mockDeveloperTasks[2]];
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: reloadedTasks, meta: pageMeta(reloadedTasks.length) });
+      await fixture.whenStable();
+    });
+
+    it('drop a "done" abre el diálogo de confirmación existente y, al confirmar, envía la mutación', async () => {
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(true)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences, mockDialog);
+
+      const ownTask = mockDeveloperTasks[0]; // status: 'todo'
+      fixture.componentInstance.onKanbanStatusChange({ task: ownTask, status: 'done' });
+
+      expect(mockDialog.open).toHaveBeenCalled();
+      expect(fixture.componentInstance.pendingMove()).toEqual({ taskId: ownTask.id, to: 'done' });
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/${ownTask.id}/status`)
+        .flush({ ...ownTask, status: 'done' });
+
+      fixture.detectChanges();
+
+      const reloadedTasks = [{ ...ownTask, status: 'done' as const }, mockDeveloperTasks[1], mockDeveloperTasks[2]];
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: reloadedTasks, meta: pageMeta(reloadedTasks.length) });
+      await fixture.whenStable();
+
+      // El overlay optimista se limpia tras la recarga con el estado real
+      expect(fixture.componentInstance.pendingMove()).toBeNull();
+    });
+
+    it('cancelar el diálogo de "done" revierte el overlay optimista sin enviar mutación', async () => {
+      const mockDialogRef = { afterClosed: vi.fn().mockReturnValue(of(false)) };
+      const mockDialog = { open: vi.fn().mockReturnValue(mockDialogRef) };
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences, mockDialog);
+
+      const ownTask = mockDeveloperTasks[0]; // status: 'todo'
+      fixture.componentInstance.onKanbanStatusChange({ task: ownTask, status: 'done' });
+
+      expect(mockDialog.open).toHaveBeenCalled();
+      expect(fixture.componentInstance.pendingMove()).toBeNull();
+
+      const columns = fixture.componentInstance.developerTasksByStatus();
+      expect(columns.find((c) => c.status === 'todo')!.tasks.map((t) => t.id)).toContain(ownTask.id);
+      expect(columns.find((c) => c.status === 'done')!.tasks.map((t) => t.id)).not.toContain(ownTask.id);
+
+      httpMock.verify();
     });
   });
 

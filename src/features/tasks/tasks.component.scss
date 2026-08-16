@@ -230,6 +230,18 @@
   font-weight: 600;
 }
 
+// Toggle lista/kanban (desarrollador)
+.tasks-view-toggle {
+  margin-bottom: 0.75rem;
+}
+
+// Texto aclaratorio bajo el toggle: el tablero kanban solo agrupa la página actual
+.tasks-kanban-caption {
+  font-size: 0.8rem;
+  color: var(--app-muted, #9aa0aa);
+  margin: 0 0 1rem;
+}
+
 // Barra de filtros de la tabla admin
 .tasks-filter-bar {
   display: flex;

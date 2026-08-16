@@ -256,6 +256,23 @@
     }
 
     @if (selectedProjectId()) {
+      <!-- Toggle lista/kanban -->
+      <mat-button-toggle-group
+        class="tasks-view-toggle"
+        [value]="viewMode()"
+        (change)="setViewMode($event.value)"
+        aria-label="Modo de vista de tareas"
+      >
+        <mat-button-toggle value="list" aria-label="Vista de lista">Lista</mat-button-toggle>
+        <mat-button-toggle value="kanban" aria-label="Vista de tablero">Tablero</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      @if (viewMode() === 'kanban') {
+        <p class="tasks-kanban-caption">
+          El tablero muestra solo las tareas de la página actual. Usa el paginador para ver más.
+        </p>
+      }
+
       <!-- Estado de carga -->
       @if (developerTasksResource.isLoading()) {
         <div class="tasks-loading" aria-label="Cargando tareas">
@@ -271,8 +288,26 @@
         </div>
       }
 
+      <!-- Tablero kanban (desarrollador) -->
+      @if (!developerTasksResource.isLoading() && !developerTasksResource.error() && viewMode() === 'kanban') {
+        <app-tasks-kanban-board
+          [columns]="developerTasksByStatus()"
+          [canDrag]="canDragTask"
+          (statusChange)="onKanbanStatusChange($event)"
+        />
+
+        <mat-paginator
+          [length]="developerTasksResource.value()?.meta?.total ?? 0"
+          [pageSize]="developerPageSize()"
+          [pageIndex]="developerPage() - 1"
+          [pageSizeOptions]="[20]"
+          (page)="onDeveloperPageChange($event)"
+          aria-label="Paginación de tareas del proyecto"
+        />
+      }
+
       <!-- Tabla de tareas (desarrollador) -->
-      @if (!developerTasksResource.isLoading() && !developerTasksResource.error()) {
+      @if (!developerTasksResource.isLoading() && !developerTasksResource.error() && viewMode() === 'list') {
         @if ((developerTasksResource.value()?.data ?? []).length === 0) {
           <div class="tasks-empty" aria-label="Sin tareas en el proyecto">
             <mat-icon class="tasks-empty__icon">checklist</mat-icon>
