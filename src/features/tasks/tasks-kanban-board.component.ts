@@ -51,9 +51,15 @@ export class TasksKanbanBoardComponent {
   readonly columns = input.required<KanbanColumn[]>();
   // Restringe qué tarjetas son arrastrables/editables (p.ej. solo tareas propias del developer)
   readonly canDrag = input<(task: Task) => boolean>();
+  // Restringe qué tarjetas ofrecen acciones de gestión (editar/cancelar) en el menú por tarjeta
+  // (solo admin). Ausente/`false` para una tarjeta oculta ambas acciones.
+  readonly canManage = input<(task: Task) => boolean>();
   readonly statusChange = output<{ task: Task; status: TaskStatus }>();
   // Nuevo orden visual de una columna tras un drag-and-drop dentro de sí misma
   readonly reorderChange = output<{ status: TaskStatus; taskIds: string[] }>();
+  // Intents de gestión emitidos desde el menú por tarjeta (solo cuando `canManage` lo permite)
+  readonly editTask = output<Task>();
+  readonly cancelTask = output<Task>();
 
   readonly dropListId = (status: TaskStatus): string => `${KANBAN_DROP_LIST_PREFIX}${status}`;
 

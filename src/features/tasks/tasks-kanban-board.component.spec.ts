@@ -221,4 +221,58 @@ describe('TasksKanbanBoardComponent', () => {
 
     expect(reorderEmitted).not.toHaveBeenCalled();
   });
+
+  describe('canManage / editTask / cancelTask (acciones de gestión, PR3)', () => {
+    it('sin `canManage` (developer) el menú no ofrece "Editar tarea" ni "Cancelar tarea"', async () => {
+      const ownTask = buildTask({ id: 'task-own', title: 'Tarea propia' });
+      await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ todo: [ownTask] }) },
+        providers: [provideAnimationsAsync()],
+      });
+
+      screen.getByRole('button', { name: 'Más acciones de Tarea propia' }).click();
+
+      expect(screen.queryByRole('menuitem', { name: /editar tarea/i })).toBeNull();
+      expect(screen.queryByRole('menuitem', { name: /cancelar tarea/i })).toBeNull();
+    });
+
+    it('con `canManage` true (admin) el menú ofrece "Editar tarea" y "Cancelar tarea", y los emite', async () => {
+      const task = buildTask({ id: 'task-1', title: 'Tarea gestionable' });
+      const { fixture } = await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ todo: [task] }), canManage: () => true },
+        providers: [provideAnimationsAsync()],
+      });
+
+      const editEmitted = vi.fn();
+      const cancelEmitted = vi.fn();
+      fixture.componentInstance.editTask.subscribe(editEmitted);
+      fixture.componentInstance.cancelTask.subscribe(cancelEmitted);
+
+      screen.getByRole('button', { name: 'Más acciones de Tarea gestionable' }).click();
+
+      screen.getByRole('menuitem', { name: /editar tarea/i }).click();
+      expect(editEmitted).toHaveBeenCalledWith(task);
+
+      screen.getByRole('button', { name: 'Más acciones de Tarea gestionable' }).click();
+      screen.getByRole('menuitem', { name: /^cancelar tarea/i }).click();
+      expect(cancelEmitted).toHaveBeenCalledWith(task);
+    });
+
+    it('una tarea ya cancelada con `canManage` true ofrece "Editar tarea" pero no "Cancelar tarea"', async () => {
+      const cancelledTask = buildTask({
+        id: 'task-cancelled',
+        title: 'Tarea cancelada',
+        status: 'cancelled',
+      });
+      await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ cancelled: [cancelledTask] }), canManage: () => true },
+        providers: [provideAnimationsAsync()],
+      });
+
+      screen.getByRole('button', { name: 'Más acciones de Tarea cancelada' }).click();
+
+      expect(screen.getByRole('menuitem', { name: /editar tarea/i })).toBeTruthy();
+      expect(screen.queryByRole('menuitem', { name: /^cancelar tarea/i })).toBeNull();
+    });
+  });
 });

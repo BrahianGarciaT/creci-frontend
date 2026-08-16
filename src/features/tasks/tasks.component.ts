@@ -1,24 +1,11 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTableModule } from '@angular/material/table';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/services/auth.service';
-import { UiPreferencesService, TasksViewMode } from '../../core/services/ui-preferences.service';
 import { Project } from '../projects/projects.service';
 import { User } from '../users/users.service';
 import { environment } from '../../environments/environment';
@@ -27,14 +14,7 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
-import {
-  Task,
-  TasksService,
-  TaskPriority,
-  TaskStatus,
-  UpdateEstimatePayload,
-  UpdateStatusPayload,
-} from './tasks.service';
+import { Task, TasksService, TaskStatus, UpdateStatusPayload } from './tasks.service';
 import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
@@ -54,20 +34,22 @@ const KANBAN_COLUMN_DEFS: readonly Omit<KanbanColumn, 'tasks'>[] = [
   { status: 'cancelled', label: 'Cancelada', droppable: false },
 ];
 
+/**
+ * Vista unificada de tareas — un único flujo selector-de-proyecto + tablero kanban
+ * para ambos roles. Admin elige entre todos los proyectos y gestiona cualquier
+ * tarjeta (crear/editar/cancelar/drag); developer elige entre sus proyectos y
+ * solo puede arrastrar/estimar sus propias tareas. No hay vista de lista ni
+ * paginación: el tablero siempre trae el proyecto completo (`all=true`).
+ */
 @Component({
   selector: 'app-tasks',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    MatTableModule,
     MatButtonModule,
-    MatButtonToggleModule,
     MatIconModule,
-    MatPaginatorModule,
     MatProgressSpinnerModule,
     MatSelectModule,
-    MatTooltipModule,
-    DatePipe,
     TasksKanbanBoardComponent,
   ],
   templateUrl: './tasks.component.html',
@@ -77,37 +59,7 @@ export class TasksComponent {
   private readonly authService = inject(AuthService);
   private readonly tasksService = inject(TasksService);
   private readonly dialog = inject(MatDialog);
-  private readonly uiPreferences = inject(UiPreferencesService);
   private readonly apiUrl = environment.apiUrl;
-
-  // Medianoche local capturada en la construcción — hace determinista isOverdue() en tests
-  private readonly todayStart: Date;
-
-  constructor() {
-    const now = new Date();
-    this.todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Recuperación de página vacía (admin): si el backend devuelve data:[] para una
-    // página > 1 con total > 0, retrocede a la última página válida. El propio
-    // signal de página dispara la recarga del recurso, sin lógica extra de reload().
-    effect(() => {
-      const result = this.allTasksResource.value();
-      if (!result) return;
-      if (result.data.length === 0 && result.meta.page > 1 && result.meta.total > 0) {
-        this.adminPage.set(result.meta.totalPages);
-      }
-    });
-
-    // Recuperación de página vacía (developer) — mismo criterio que el admin, aplicado
-    // a la tabla de tareas del proyecto seleccionado.
-    effect(() => {
-      const result = this.developerTasksResource.value();
-      if (!result) return;
-      if (result.data.length === 0 && result.meta.page > 1 && result.meta.total > 0) {
-        this.developerPage.set(result.meta.totalPages);
-      }
-    });
-  }
 
   // Usuario autenticado actual
   readonly currentUser = this.authService.currentUser;
@@ -128,58 +80,36 @@ export class TasksComponent {
     this.isAdmin() ? { url: `${this.apiUrl}/users` } : undefined
   );
 
-  // Página actual (1-based) y tamaño de página de la tabla admin de tareas
-  readonly adminPage = signal(1);
-  readonly adminPageSize = signal(20);
-
-  // Filtros de la tabla admin — signals leídos dentro de la composición del request,
-  // igual que adminPage/adminPageSize: sobreviven a .reload() sin lógica extra.
-  readonly statusFilter = signal<TaskStatus | 'all'>('all');
-  readonly priorityFilter = signal<TaskPriority | 'all'>('all');
-
-  // Recurso reactivo de tareas para el admin (lista completa — solo se dispara si es admin).
-  // status/priority se omiten del request cuando están en 'all' (el backend rechaza con 400
-  // el valor centinela 'all' vía @IsEnum).
-  readonly allTasksResource = httpResource<Paginated<Task>>(() => {
-    if (!this.isAdmin()) return undefined;
-    const params: Record<string, string | number> = {
-      page: this.adminPage(),
-      limit: this.adminPageSize(),
-    };
-    const status = this.statusFilter();
-    if (status !== 'all') params['status'] = status;
-    const priority = this.priorityFilter();
-    if (priority !== 'all') params['priority'] = priority;
-    return { url: `${this.apiUrl}/tasks`, params };
+  // Proyectos del desarrollador (filtrados por membresía)
+  readonly developerProjects = computed(() => {
+    const userId = this.currentUser()?.id;
+    if (!userId) return [];
+    return (this.projectsResource.value()?.data ?? []).filter((p) =>
+      p.developers.some((d) => d.id === userId)
+    );
   });
 
-  // ID del proyecto seleccionado para la vista de desarrollador
+  // Proyectos que alimentan el selector — todos para admin, solo los propios para developer
+  readonly selectableProjects = computed(() =>
+    this.isAdmin() ? (this.projectsResource.value()?.data ?? []) : this.developerProjects()
+  );
+
+  // ID del proyecto seleccionado — compartido por ambos roles
   readonly selectedProjectId = signal<string>('');
 
-  // Página actual (1-based) y tamaño de página de la tabla de tareas del desarrollador
-  readonly developerPage = signal(1);
-  readonly developerPageSize = signal(20);
-
-  // Recurso reactivo para tareas del proyecto del desarrollador
-  // Se inicializa vacío y se actualiza cuando el desarrollador selecciona un proyecto
-  readonly developerTasksResource = httpResource<Paginated<Task>>(() => {
+  // Recurso reactivo único de tareas del proyecto seleccionado, sin paginar (`all=true`).
+  // Reemplaza tanto el antiguo `allTasksResource` (admin) como `developerTasksResource`.
+  readonly projectTasksResource = httpResource<Paginated<Task>>(() => {
     const projectId = this.selectedProjectId();
     if (!projectId) return undefined;
     return {
-      url: `${environment.apiUrl}/tasks/project/${projectId}`,
-      params: { page: this.developerPage(), limit: this.developerPageSize() },
+      url: `${this.apiUrl}/tasks/project/${projectId}`,
+      params: { all: true },
     };
   });
 
-  // Columnas de la tabla — varían según el rol
-  readonly adminColumns = ['title', 'priority', 'status', 'project', 'assignee', 'dueDate', 'actions'];
-  readonly developerColumns = ['title', 'priority', 'status', 'project', 'assignee', 'statusAction', 'estimateAction'];
-
-  // Modo de vista de la tabla de tareas del desarrollador (list | kanban), hidratado desde localStorage
-  readonly viewMode = signal<TasksViewMode>(this.uiPreferences.getTasksViewMode());
-
   // Overlay optimista de un movimiento de kanban pendiente de confirmación/mutación — se
-  // aplica dentro de `developerTasksByStatus` y se limpia al confirmar/errar/cancelar (revert).
+  // aplica dentro de `tasksByStatus` y se limpia al confirmar/errar/cancelar (revert).
   // No se usa `transferArrayItem` de CDK: el overlay declarativo hace el revert un simple set(null).
   readonly pendingMove = signal<{ taskId: string; to: TaskStatus } | null>(null);
 
@@ -187,12 +117,12 @@ export class TasksComponent {
   // confirmación/mutación — mismo patrón que `pendingMove` (revert = set(null)).
   readonly pendingReorder = signal<{ status: TaskStatus; orderedIds: string[] } | null>(null);
 
-  // Agrupa la página actual de `developerTasksResource` en las 4 columnas fijas del kanban,
+  // Agrupa las tareas del proyecto seleccionado en las 4 columnas fijas del kanban,
   // aplicando el overlay de `pendingMove` antes de filtrar por columna, y el de
   // `pendingReorder` después, para reflejar el drag-and-drop antes de que confirme el backend.
-  readonly developerTasksByStatus = computed<KanbanColumn[]>(() => {
+  readonly tasksByStatus = computed<KanbanColumn[]>(() => {
     const move = this.pendingMove();
-    const tasks = (this.developerTasksResource.value()?.data ?? []).map((t) =>
+    const tasks = (this.projectTasksResource.value()?.data ?? []).map((t) =>
       move && t.id === move.taskId ? { ...t, status: move.to } : t
     );
     const reorder = this.pendingReorder();
@@ -209,26 +139,15 @@ export class TasksComponent {
     });
   });
 
-  // ID de la tarea pendiente de cancelación (confirmación inline)
-  readonly pendingCancelId = signal<string | null>(null);
-
   // Mensaje de error de mutaciones
   readonly mutationError = signal<string | null>(null);
 
-  // Proyectos del desarrollador (filtrados por membresía)
-  readonly developerProjects = computed(() => {
-    const userId = this.currentUser()?.id;
-    if (!userId) return [];
-    return (this.projectsResource.value()?.data ?? []).filter((p) =>
-      p.developers.some((d) => d.id === userId)
-    );
-  });
-
-  /** Abre el diálogo de creación de tarea (solo admin) */
+  /** Abre el diálogo de creación de tarea (solo admin), preseleccionando el proyecto activo */
   openCreateDialog(): void {
     const dialogData: CreateTaskDialogData = {
       projects: this.projectsResource.value()?.data ?? [],
       users: this.usersResource.value() ?? [],
+      preselectedProjectId: this.selectedProjectId() || undefined,
     };
 
     const dialogRef = this.dialog.open(CreateTaskDialogComponent, {
@@ -239,13 +158,13 @@ export class TasksComponent {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        this.allTasksResource.reload();
+        this.projectTasksResource.reload();
       }
     });
   }
 
-  /** Abre el diálogo de edición de tarea (solo admin) */
-  openEditDialog(task: Task): void {
+  /** Abre el diálogo de edición de tarea (solo admin, vía menú de la tarjeta) */
+  editTask(task: Task): void {
     const dialogData: EditTaskDialogData = {
       task,
       projects: this.projectsResource.value()?.data ?? [],
@@ -260,37 +179,39 @@ export class TasksComponent {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        this.allTasksResource.reload();
+        this.projectTasksResource.reload();
       }
     });
   }
 
-  /** Marca una tarea como "pendiente de confirmar cancelación" (solo admin) */
-  requestCancel(id: string): void {
+  /** Solicita confirmación y cancela (soft-delete) una tarea (solo admin, vía menú de la tarjeta) */
+  cancelTask(task: Task): void {
     this.mutationError.set(null);
-    this.pendingCancelId.set(id);
-  }
 
-  /** Cancela el paso de confirmación de cancelación */
-  cancelConfirm(): void {
-    this.pendingCancelId.set(null);
-  }
+    const dialogData: ConfirmDialogData = {
+      title: 'Cancelar tarea',
+      message: `¿Confirmas que quieres cancelar "${task.title}"? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Cancelar tarea',
+    };
 
-  /** Confirma y ejecuta el soft-cancel de la tarea indicada (solo admin) */
-  confirmCancel(id: string): void {
-    this.tasksService.cancel(id).subscribe({
-      next: () => {
-        this.allTasksResource.reload();
-        this.pendingCancelId.set(null);
-      },
-      error: () => {
-        this.mutationError.set('Error al cancelar la tarea. Intenta nuevamente.');
-        this.pendingCancelId.set(null);
-      },
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: dialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+
+      this.tasksService.cancel(task.id).subscribe({
+        next: () => this.projectTasksResource.reload(),
+        error: () => {
+          this.mutationError.set('Error al cancelar la tarea. Intenta nuevamente.');
+        },
+      });
     });
   }
 
-  /** Actualiza el estado de una tarea (desarrollador — solo tareas propias) */
+  /** Actualiza el estado de una tarea (developer: solo propias; admin: cualquiera) */
   updateTaskStatus(task: Task, status: TaskStatus, revert?: () => void): void {
     if (status === 'cancelled') return;
 
@@ -321,15 +242,23 @@ export class TasksComponent {
     this.submitTaskStatus(task, status, revert);
   }
 
-  /** Envía la actualización de estado al backend e invoca el callback de reversión en caso de error */
+  /**
+   * Envía la actualización de estado al backend e invoca el callback de reversión en caso
+   * de error. Admin pasa por el endpoint `update` (no está limitado a tareas propias);
+   * developer sigue usando el endpoint `/status`, restringido por el backend a su asignación.
+   */
   private submitTaskStatus(task: Task, status: TaskStatus, revert?: () => void): void {
-    const payload: UpdateStatusPayload = { status: status as 'todo' | 'in_progress' | 'done' };
+    const request$ = this.isAdmin()
+      ? this.tasksService.update(task.id, { status })
+      : this.tasksService.updateStatus(task.id, {
+          status: status as UpdateStatusPayload['status'],
+        });
 
-    this.tasksService.updateStatus(task.id, payload).subscribe({
+    request$.subscribe({
       next: () => {
         // Limpia cualquier overlay optimista de kanban pendiente: la recarga trae el estado real
         this.pendingMove.set(null);
-        this.developerTasksResource.reload();
+        this.projectTasksResource.reload();
       },
       error: () => {
         this.mutationError.set('Error al actualizar el estado. Intenta nuevamente.');
@@ -338,14 +267,11 @@ export class TasksComponent {
     });
   }
 
-  /** Cambia el modo de vista (list | kanban) y persiste la preferencia */
-  setViewMode(mode: TasksViewMode): void {
-    this.viewMode.set(mode);
-    this.uiPreferences.setTasksViewMode(mode);
-  }
+  /** Determina si una tarjeta del kanban puede arrastrarse — admin: cualquiera; developer: solo propias */
+  readonly canDragTask = (task: Task): boolean => this.isAdmin() || this.isOwnTask(task);
 
-  /** Determina si una tarjeta del kanban puede arrastrarse/editarse (solo tareas propias) */
-  readonly canDragTask = (task: Task): boolean => this.isOwnTask(task);
+  /** Determina si una tarjeta del kanban ofrece acciones de gestión (editar/cancelar) — solo admin */
+  readonly canManageTask = (): boolean => this.isAdmin();
 
   /**
    * Recibe el intent de cambio de estado emitido por el tablero kanban (drag o menú
@@ -366,7 +292,8 @@ export class TasksComponent {
    * Recibe el nuevo orden de una columna tras un drag-and-drop dentro de sí misma
    * (emitido solo para todo/in_progress — done/cancelled no son droppable). Aplica
    * el overlay optimista y persiste; el revert ante error limpia el overlay, lo que
-   * vuelve a mostrar el orden real del backend.
+   * vuelve a mostrar el orden real del backend. Alcanzable por admin desde que
+   * `reorderColumn` en el backend admite acceso `allowAdmin: true`.
    */
   onKanbanReorder({ status, taskIds }: { status: TaskStatus; taskIds: string[] }): void {
     const projectId = this.selectedProjectId();
@@ -376,7 +303,7 @@ export class TasksComponent {
     this.tasksService.reorderColumn(projectId, { status, taskIds }).subscribe({
       next: () => {
         this.pendingReorder.set(null);
-        this.developerTasksResource.reload();
+        this.projectTasksResource.reload();
       },
       error: () => {
         this.mutationError.set('Error al reordenar las tareas. Intenta nuevamente.');
@@ -385,61 +312,8 @@ export class TasksComponent {
     });
   }
 
-  /** Actualiza las horas estimadas de una tarea (desarrollador — solo tareas propias) */
-  updateTaskEstimate(task: Task, estimatedHours: number): void {
-    if (!estimatedHours || estimatedHours <= 0) return;
-    const payload: UpdateEstimatePayload = { estimatedHours };
-
-    this.tasksService.updateEstimate(task.id, payload).subscribe({
-      next: () => {
-        this.developerTasksResource.reload();
-      },
-      error: () => {
-        this.mutationError.set('Error al actualizar las horas estimadas. Intenta nuevamente.');
-      },
-    });
-  }
-
-  /** Cambia el filtro de estado y resetea la página admin a la primera. */
-  setStatusFilter(value: TaskStatus | 'all'): void {
-    this.statusFilter.set(value);
-    this.adminPage.set(1);
-  }
-
-  /** Cambia el filtro de prioridad y resetea la página admin a la primera. */
-  setPriorityFilter(value: TaskPriority | 'all'): void {
-    this.priorityFilter.set(value);
-    this.adminPage.set(1);
-  }
-
-  /** Maneja el cambio de página/tamaño de página del paginador de la tabla admin. */
-  onAdminPageChange(event: PageEvent): void {
-    this.adminPage.set(event.pageIndex + 1);
-    this.adminPageSize.set(event.pageSize);
-  }
-
-  /** Maneja el cambio de página/tamaño de página del paginador de la tabla developer. */
-  onDeveloperPageChange(event: PageEvent): void {
-    this.developerPage.set(event.pageIndex + 1);
-    this.developerPageSize.set(event.pageSize);
-  }
-
   /** Verifica si una tarea pertenece al usuario autenticado */
   isOwnTask(task: Task): boolean {
     return task.assignee?.id === this.currentUser()?.id;
-  }
-
-  /**
-   * Indica si una tarea está vencida (solo admin): tiene fecha límite estrictamente
-   * anterior a hoy y su estado no es "done" ni "cancelled". Una tarea que vence hoy
-   * NO se considera vencida.
-   */
-  isOverdue(task: Task): boolean {
-    return (
-      !!task.dueDate &&
-      new Date(task.dueDate) < this.todayStart &&
-      task.status !== 'done' &&
-      task.status !== 'cancelled'
-    );
   }
 }

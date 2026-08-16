@@ -63,7 +63,7 @@
               mat-icon-button
               class="kanban-card__menu-trigger"
               [matMenuTriggerFor]="statusMenu"
-              [attr.aria-label]="'Cambiar estado de ' + task.title"
+              [attr.aria-label]="'Más acciones de ' + task.title"
             >
               <mat-icon>more_vert</mat-icon>
             </button>
@@ -75,6 +75,24 @@
                 </button>
               } @empty {
                 <button mat-menu-item disabled>Sin cambios disponibles</button>
+              }
+              @if (canManage()?.(task)) {
+                <button
+                  mat-menu-item
+                  (click)="editTask.emit(task)"
+                  [attr.aria-label]="'Editar ' + task.title"
+                >
+                  Editar tarea
+                </button>
+                @if (task.status !== 'cancelled') {
+                  <button
+                    mat-menu-item
+                    (click)="cancelTask.emit(task)"
+                    [attr.aria-label]="'Cancelar tarea ' + task.title"
+                  >
+                    Cancelar tarea
+                  </button>
+                }
               }
             </mat-menu>
           </div>

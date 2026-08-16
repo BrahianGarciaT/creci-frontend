@@ -18,6 +18,9 @@ import { TaskPriority, TasksService } from './tasks.service';
 export interface CreateTaskDialogData {
   projects: Project[];
   users: User[];
+  // Proyecto preseleccionado (el ya elegido en el selector del contenedor) — evita
+  // que el admin tenga que re-elegir el mismo proyecto dentro del diálogo.
+  preselectedProjectId?: string;
 }
 
 @Component({
@@ -212,7 +215,7 @@ export class CreateTaskDialogComponent {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    projectId: new FormControl('', {
+    projectId: new FormControl(this.data.preselectedProjectId ?? '', {
       nonNullable: true,
       validators: [Validators.required],
     }),
