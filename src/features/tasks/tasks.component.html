@@ -349,10 +349,12 @@
                   [class.status-badge--todo]="row.status === 'todo'"
                   [class.status-badge--in-progress]="row.status === 'in_progress'"
                   [class.status-badge--done]="row.status === 'done'"
+                  [class.status-badge--cancelled]="row.status === 'cancelled'"
                 >
                   {{ row.status === 'todo' ? 'Pendiente'
                     : row.status === 'in_progress' ? 'En progreso'
-                    : 'Completada' }}
+                    : row.status === 'done' ? 'Completada'
+                    : 'Cancelada' }}
                 </span>
               </mat-cell>
             </ng-container>
@@ -377,10 +379,12 @@
                   <mat-select
                     #statusSelect
                     [value]="row.status"
-                    [disabled]="row.status === 'done'"
+                    [disabled]="row.status === 'done' || row.status === 'cancelled'"
                     (valueChange)="updateTaskStatus(row, $event, () => (statusSelect.value = row.status))"
                     aria-label="Cambiar estado de la tarea"
                     class="status-select"
+                    [matTooltip]="row.status === 'done' ? 'No se puede modificar el estado de una tarea completada' : row.status === 'cancelled' ? 'No se puede modificar el estado de una tarea cancelada' : ''"
+                    [matTooltipDisabled]="row.status !== 'done' && row.status !== 'cancelled'"
                   >
                     <mat-option value="todo">Pendiente</mat-option>
                     <mat-option value="in_progress">En progreso</mat-option>
@@ -405,9 +409,9 @@
                       step="0.5"
                       class="estimate-input"
                       aria-label="Horas estimadas"
-                      [disabled]="row.status === 'done'"
-                      [matTooltip]="row.status === 'done' ? 'No se puede modificar la estimación de una tarea completada' : ''"
-                      [matTooltipDisabled]="row.status !== 'done'"
+                      [disabled]="row.status === 'done' || row.status === 'cancelled'"
+                      [matTooltip]="row.status === 'done' ? 'No se puede modificar la estimación de una tarea completada' : row.status === 'cancelled' ? 'No se puede modificar la estimación de una tarea cancelada' : ''"
+                      [matTooltipDisabled]="row.status !== 'done' && row.status !== 'cancelled'"
                       (change)="updateTaskEstimate(row, +($event.target)!['value'])"
                     />
                   </div>

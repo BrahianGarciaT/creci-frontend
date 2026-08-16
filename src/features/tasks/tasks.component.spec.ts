@@ -322,6 +322,46 @@ describe('TasksComponent', () => {
       expect(statusSelects[0].getAttribute('aria-disabled')).not.toBe('true');
       expect(statusSelects[1].getAttribute('aria-disabled')).toBe('true');
     });
+
+    it('deshabilita estado y estimación de una tarea propia cancelada (solo lectura)', async () => {
+      // El backend ya no excluye status=cancelled de /tasks/project/:id — el dev
+      // ve la tarea cancelada pero no puede tocar su estado ni su estimación
+      // (backend rechaza ambas mutaciones con 400, ver tasks.service.ts).
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      await fixture.whenStable();
+
+      fixture.componentInstance.selectedProjectId.set('project-1');
+      fixture.detectChanges();
+
+      const cancelledTask: Task = {
+        ...mockDeveloperTasks[0],
+        id: 'task-own-cancelled',
+        title: 'Tarea propia cancelada',
+        status: 'cancelled',
+      };
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: [cancelledTask], meta: pageMeta(1) });
+      await fixture.whenStable();
+
+      expect(screen.getByText('Cancelada')).toBeTruthy();
+
+      const statusSelect = screen.getByLabelText('Cambiar estado de la tarea');
+      expect(statusSelect.getAttribute('aria-disabled')).toBe('true');
+
+      const estimateInput = screen.getByLabelText('Horas estimadas') as HTMLInputElement;
+      expect(estimateInput.disabled).toBe(true);
+    });
   });
 
   describe('Indicador de vencimiento (admin)', () => {
@@ -827,6 +867,46 @@ describe('TasksComponent', () => {
       expect(inProgressColumn.tasks.map((t) => t.id)).toEqual(['task-other']);
       expect(doneColumn.tasks.map((t) => t.id)).toEqual(['task-own-done']);
       expect(cancelledColumn.tasks).toEqual([]);
+    });
+
+    it('muestra las tareas canceladas en la columna "cancelled" (solo lectura, no-droppable)', async () => {
+      // El backend ya no excluye status=cancelled de /tasks/project/:id (ver
+      // apps/backend tasks.service.ts findByProject) — el dev debe ver que su
+      // tarea fue cancelada en vez de que desaparezca sin rastro.
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+          { provide: UiPreferencesService, useValue: fakeUiPreferences },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length, 1, 100) });
+      await fixture.whenStable();
+
+      fixture.componentInstance.selectedProjectId.set('project-1');
+      fixture.detectChanges();
+
+      const cancelledTask: Task = {
+        ...mockDeveloperTasks[0],
+        id: 'task-own-cancelled',
+        status: 'cancelled',
+      };
+      const tasksWithCancelled = [...mockDeveloperTasks, cancelledTask];
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: tasksWithCancelled, meta: pageMeta(tasksWithCancelled.length) });
+      await fixture.whenStable();
+
+      const columns = fixture.componentInstance.developerTasksByStatus();
+      const cancelledColumn = columns.find((c) => c.status === 'cancelled')!;
+
+      expect(cancelledColumn.droppable).toBe(false);
+      expect(cancelledColumn.tasks.map((t) => t.id)).toEqual(['task-own-cancelled']);
     });
 
     it('onKanbanStatusChange para todo → in_progress envía PATCH vía la mutación existente', async () => {
