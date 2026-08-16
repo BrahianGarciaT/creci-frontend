@@ -61,6 +61,14 @@ export interface UpdateEstimatePayload {
   estimatedHours: number;
 }
 
+// Payload para persistir el nuevo orden visual de una columna del kanban
+// (solo columnas reordenables: todo/in_progress). `taskIds` debe ser
+// exactamente el mismo conjunto de IDs que ya existe en esa columna.
+export interface ReorderColumnPayload {
+  status: 'todo' | 'in_progress';
+  taskIds: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class TasksService {
   private readonly http = inject(HttpClient);
@@ -101,5 +109,14 @@ export class TasksService {
    */
   cancel(id: string): Observable<Task> {
     return this.http.delete<Task>(`${this.apiUrl}/tasks/${id}`);
+  }
+
+  /**
+   * Persiste el nuevo orden visual de una columna del kanban tras un
+   * drag-and-drop dentro de la misma columna. Cualquier miembro del proyecto
+   * puede reordenarla (es un layout compartido, no una edición de campos).
+   */
+  reorderColumn(projectId: string, payload: ReorderColumnPayload): Observable<void> {
+    return this.http.patch<void>(`${this.apiUrl}/tasks/project/${projectId}/reorder`, payload);
   }
 }

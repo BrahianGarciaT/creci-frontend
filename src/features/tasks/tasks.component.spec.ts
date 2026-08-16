@@ -977,6 +977,53 @@ describe('TasksComponent', () => {
 
       httpMock.verify();
     });
+
+    it('onKanbanReorder aplica el overlay optimista y persiste el nuevo orden', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      // mockDeveloperTasks: [task-own (todo), task-other (in_progress), task-own-done (done)]
+      fixture.componentInstance.onKanbanReorder({
+        status: 'todo',
+        taskIds: ['task-own'], // única tarea propia en 'todo' en este fixture
+      });
+
+      // El overlay se aplica de inmediato, antes de que resuelva el PATCH
+      expect(fixture.componentInstance.pendingReorder()).toEqual({
+        status: 'todo',
+        orderedIds: ['task-own'],
+      });
+
+      httpMock.expectOne(`${apiUrl}/tasks/project/project-1/reorder`).flush(null);
+      fixture.detectChanges();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?page=1&limit=20`)
+        .flush({ data: mockDeveloperTasks, meta: pageMeta(mockDeveloperTasks.length) });
+      await fixture.whenStable();
+
+      // Se limpia tras la recarga con el estado real del backend
+      expect(fixture.componentInstance.pendingReorder()).toBeNull();
+    });
+
+    it('onKanbanReorder revierte el overlay y muestra error si el PATCH falla', async () => {
+      const fakeUiPreferences = buildFakeUiPreferences('kanban');
+      const fixture = await setupDeveloperKanban(fakeUiPreferences);
+
+      fixture.componentInstance.onKanbanReorder({
+        status: 'todo',
+        taskIds: ['task-own'],
+      });
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1/reorder`)
+        .flush({ message: 'stale' }, { status: 400, statusText: 'Bad Request' });
+
+      expect(fixture.componentInstance.pendingReorder()).toBeNull();
+      expect(fixture.componentInstance.mutationError()).toBe(
+        'Error al reordenar las tareas. Intenta nuevamente.',
+      );
+    });
   });
 
   describe('Paginación (admin)', () => {

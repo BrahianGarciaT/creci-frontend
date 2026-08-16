@@ -294,6 +294,7 @@
           [columns]="developerTasksByStatus()"
           [canDrag]="canDragTask"
           (statusChange)="onKanbanStatusChange($event)"
+          (reorderChange)="onKanbanReorder($event)"
         />
 
         <mat-paginator

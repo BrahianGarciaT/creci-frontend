@@ -38,13 +38,14 @@ function buildDragDropEvent(
   task: Task,
   previousContainerId: string,
   containerId: string,
+  indices: { previousIndex?: number; currentIndex?: number } = {},
 ): CdkDragDrop<Task[]> {
   return {
     previousContainer: { id: previousContainerId, data: [] } as any,
     container: { id: containerId, data: [] } as any,
     item: { data: task } as any,
-    currentIndex: 0,
-    previousIndex: 0,
+    currentIndex: indices.currentIndex ?? 0,
+    previousIndex: indices.previousIndex ?? 0,
     isPointerOverContainer: true,
     distance: { x: 0, y: 0 },
     dropPoint: { x: 0, y: 0 },
@@ -149,5 +150,75 @@ describe('TasksKanbanBoardComponent', () => {
     );
 
     expect(emitted).not.toHaveBeenCalled();
+  });
+
+  it('drop() dentro de la misma columna emite reorderChange con el nuevo orden de IDs', async () => {
+    const taskA = buildTask({ id: 'task-a' });
+    const taskB = buildTask({ id: 'task-b' });
+    const taskC = buildTask({ id: 'task-c' });
+    const { fixture } = await render(TasksKanbanBoardComponent, {
+      inputs: { columns: buildColumns({ todo: [taskA, taskB, taskC] }) },
+      providers: [provideAnimationsAsync()],
+    });
+
+    const statusEmitted = vi.fn();
+    const reorderEmitted = vi.fn();
+    fixture.componentInstance.statusChange.subscribe(statusEmitted);
+    fixture.componentInstance.reorderChange.subscribe(reorderEmitted);
+
+    // Arrastra task-a (índice 0) hasta el final (índice 2): [b, c, a]
+    fixture.componentInstance.drop(
+      buildDragDropEvent(taskA, 'kanban-column-todo', 'kanban-column-todo', {
+        previousIndex: 0,
+        currentIndex: 2,
+      }),
+    );
+
+    expect(reorderEmitted).toHaveBeenCalledWith({
+      status: 'todo',
+      taskIds: ['task-b', 'task-c', 'task-a'],
+    });
+    expect(statusEmitted).not.toHaveBeenCalled();
+  });
+
+  it('drop() en la misma columna no emite nada cuando el índice no cambia (no-op)', async () => {
+    const taskA = buildTask({ id: 'task-a' });
+    const { fixture } = await render(TasksKanbanBoardComponent, {
+      inputs: { columns: buildColumns({ todo: [taskA] }) },
+      providers: [provideAnimationsAsync()],
+    });
+
+    const reorderEmitted = vi.fn();
+    fixture.componentInstance.reorderChange.subscribe(reorderEmitted);
+
+    fixture.componentInstance.drop(
+      buildDragDropEvent(taskA, 'kanban-column-todo', 'kanban-column-todo', {
+        previousIndex: 0,
+        currentIndex: 0,
+      }),
+    );
+
+    expect(reorderEmitted).not.toHaveBeenCalled();
+  });
+
+  it('drop() en una columna no-droppable (done/cancelled) no emite reorderChange', async () => {
+    const taskA = buildTask({ id: 'task-a', status: 'done' });
+    const taskB = buildTask({ id: 'task-b', status: 'done' });
+    const { fixture } = await render(TasksKanbanBoardComponent, {
+      inputs: { columns: buildColumns({ done: [taskA, taskB] }) },
+      providers: [provideAnimationsAsync()],
+    });
+
+    const reorderEmitted = vi.fn();
+    fixture.componentInstance.reorderChange.subscribe(reorderEmitted);
+
+    fixture.componentInstance.drop(
+      buildDragDropEvent(taskA, 'kanban-column-done', 'kanban-column-done', {
+        previousIndex: 0,
+        currentIndex: 1,
+      }),
+    );
+
+    expect(reorderEmitted).not.toHaveBeenCalled();
   });
 });

@@ -183,17 +183,30 @@ export class TasksComponent {
   // No se usa `transferArrayItem` de CDK: el overlay declarativo hace el revert un simple set(null).
   readonly pendingMove = signal<{ taskId: string; to: TaskStatus } | null>(null);
 
+  // Overlay optimista de un reorder dentro de una misma columna, pendiente de
+  // confirmación/mutación — mismo patrón que `pendingMove` (revert = set(null)).
+  readonly pendingReorder = signal<{ status: TaskStatus; orderedIds: string[] } | null>(null);
+
   // Agrupa la página actual de `developerTasksResource` en las 4 columnas fijas del kanban,
-  // aplicando el overlay de `pendingMove` antes de filtrar por columna.
+  // aplicando el overlay de `pendingMove` antes de filtrar por columna, y el de
+  // `pendingReorder` después, para reflejar el drag-and-drop antes de que confirme el backend.
   readonly developerTasksByStatus = computed<KanbanColumn[]>(() => {
     const move = this.pendingMove();
     const tasks = (this.developerTasksResource.value()?.data ?? []).map((t) =>
       move && t.id === move.taskId ? { ...t, status: move.to } : t
     );
-    return KANBAN_COLUMN_DEFS.map((def) => ({
-      ...def,
-      tasks: tasks.filter((t) => t.status === def.status),
-    }));
+    const reorder = this.pendingReorder();
+    return KANBAN_COLUMN_DEFS.map((def) => {
+      const columnTasks = tasks.filter((t) => t.status === def.status);
+      if (!reorder || reorder.status !== def.status) {
+        return { ...def, tasks: columnTasks };
+      }
+      const byId = new Map(columnTasks.map((t) => [t.id, t]));
+      const ordered = reorder.orderedIds
+        .map((id) => byId.get(id))
+        .filter((t): t is Task => !!t);
+      return { ...def, tasks: ordered };
+    });
   });
 
   // ID de la tarea pendiente de cancelación (confirmación inline)
@@ -347,6 +360,29 @@ export class TasksComponent {
 
     this.pendingMove.set({ taskId: task.id, to: status });
     this.updateTaskStatus(task, status, () => this.pendingMove.set(null));
+  }
+
+  /**
+   * Recibe el nuevo orden de una columna tras un drag-and-drop dentro de sí misma
+   * (emitido solo para todo/in_progress — done/cancelled no son droppable). Aplica
+   * el overlay optimista y persiste; el revert ante error limpia el overlay, lo que
+   * vuelve a mostrar el orden real del backend.
+   */
+  onKanbanReorder({ status, taskIds }: { status: TaskStatus; taskIds: string[] }): void {
+    const projectId = this.selectedProjectId();
+    if (!projectId || (status !== 'todo' && status !== 'in_progress')) return;
+
+    this.pendingReorder.set({ status, orderedIds: taskIds });
+    this.tasksService.reorderColumn(projectId, { status, taskIds }).subscribe({
+      next: () => {
+        this.pendingReorder.set(null);
+        this.developerTasksResource.reload();
+      },
+      error: () => {
+        this.mutationError.set('Error al reordenar las tareas. Intenta nuevamente.');
+        this.pendingReorder.set(null);
+      },
+    });
   }
 
   /** Actualiza las horas estimadas de una tarea (desarrollador — solo tareas propias) */
