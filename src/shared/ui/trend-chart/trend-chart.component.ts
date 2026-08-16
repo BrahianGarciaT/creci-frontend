@@ -24,6 +24,10 @@ import {
 // (tree-shakeable, en vez de `Chart.register(...registerables)`).
 Chart.register(LineController, CategoryScale, LinearScale, PointElement, LineElement, Tooltip);
 
+// Mismo acento que el resto de la UI (ver --app-accent en styles.scss). Chart.js
+// no puede leer custom properties CSS por sí solo, así que se fija en hex directo.
+const CHART_ACCENT_COLOR = '#4f8cff';
+
 // Constructor de Chart inyectado en vez de importado directo: así los tests
 // lo reemplazan por DI (`TestBed` provider) en lugar de interceptar el módulo
 // `chart.js` con `vi.mock`, que depende del pre-bundling de Vite y es
@@ -86,7 +90,16 @@ export class TrendChartComponent {
           type: 'line',
           data: {
             labels,
-            datasets: [{ label, data }],
+            datasets: [
+              {
+                label,
+                data,
+                borderColor: CHART_ACCENT_COLOR,
+                backgroundColor: CHART_ACCENT_COLOR,
+                pointBackgroundColor: CHART_ACCENT_COLOR,
+                tension: 0.3,
+              },
+            ],
           },
           options: {
             responsive: true,

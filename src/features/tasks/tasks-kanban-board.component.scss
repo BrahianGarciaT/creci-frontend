@@ -13,8 +13,26 @@
   flex-direction: column;
   background: var(--app-surface, #1a1d24);
   border: 1px solid var(--app-border, rgba(255, 255, 255, 0.08));
+  border-top: 3px solid transparent;
   border-radius: 12px;
   padding: 0.75rem;
+
+  // Mismo color que status-badge (tasks.component.scss) — asocia columna con estado
+  &--todo {
+    border-top-color: var(--app-muted, #9aa0aa);
+  }
+
+  &--in-progress {
+    border-top-color: var(--app-accent, #4f8cff);
+  }
+
+  &--done {
+    border-top-color: #22c55e;
+  }
+
+  &--cancelled {
+    border-top-color: #f44336;
+  }
 
   &--readonly {
     opacity: 0.85;
@@ -64,8 +82,22 @@
   gap: 0.5rem;
   background: var(--app-bg, #0f1115);
   border: 1px solid var(--app-border, rgba(255, 255, 255, 0.08));
+  border-left: 3px solid transparent;
   border-radius: 8px;
   padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+
+  // Mismo color que priority-badge (tasks.component.scss) — urgencia a simple vista
+  &--high {
+    border-left-color: #f44336;
+  }
+
+  &--medium {
+    border-left-color: #ffa726;
+  }
+
+  &--low {
+    border-left-color: #22c55e;
+  }
 
   &__body {
     display: flex;
@@ -80,13 +112,63 @@
     color: var(--app-text, #e6e8ec);
   }
 
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
   &__assignee {
     font-size: 0.7rem;
     color: var(--app-muted, #9aa0aa);
   }
 
+  &__estimate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 0.7rem;
+    color: var(--app-muted, #9aa0aa);
+
+    mat-icon {
+      font-size: 0.9rem;
+      width: 0.9rem;
+      height: 0.9rem;
+    }
+  }
+
   &__menu-trigger {
     flex-shrink: 0;
+  }
+}
+
+// Badge de prioridad — duplicado de tasks.component.scss porque el
+// encapsulamiento de vistas de Angular no propaga estilos entre componentes.
+.priority-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  align-self: flex-start;
+
+  &--high {
+    background: rgba(244, 67, 54, 0.12);
+    color: #ef9a9a;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+  }
+
+  &--medium {
+    background: rgba(255, 167, 38, 0.12);
+    color: #ffcc80;
+    border: 1px solid rgba(255, 167, 38, 0.3);
+  }
+
+  &--low {
+    background: rgba(34, 197, 94, 0.1);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.2);
   }
 }
 

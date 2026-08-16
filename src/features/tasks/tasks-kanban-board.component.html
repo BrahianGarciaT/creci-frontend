@@ -1,6 +1,13 @@
 <div class="kanban-board" cdkDropListGroup>
   @for (column of columns(); track column.status) {
-    <div class="kanban-column" [class.kanban-column--readonly]="!column.droppable">
+    <div
+      class="kanban-column"
+      [class.kanban-column--readonly]="!column.droppable"
+      [class.kanban-column--todo]="column.status === 'todo'"
+      [class.kanban-column--in-progress]="column.status === 'in_progress'"
+      [class.kanban-column--done]="column.status === 'done'"
+      [class.kanban-column--cancelled]="column.status === 'cancelled'"
+    >
       <h3 class="kanban-column__title">
         {{ column.label }}
         <span class="kanban-column__count">{{ column.tasks.length }}</span>
@@ -21,6 +28,9 @@
         @for (task of column.tasks; track task.id) {
           <div
             class="kanban-card"
+            [class.kanban-card--high]="task.priority === 'high'"
+            [class.kanban-card--medium]="task.priority === 'medium'"
+            [class.kanban-card--low]="task.priority === 'low'"
             cdkDrag
             [cdkDragData]="task"
             [cdkDragDisabled]="isCardDragDisabled(task, column)"
@@ -36,9 +46,17 @@
               >
                 {{ task.priority === 'high' ? 'Alta' : task.priority === 'medium' ? 'Media' : 'Baja' }}
               </span>
-              @if (task.assignee) {
-                <span class="kanban-card__assignee">{{ task.assignee.email }}</span>
-              }
+              <div class="kanban-card__meta">
+                @if (task.assignee) {
+                  <span class="kanban-card__assignee">{{ task.assignee.email }}</span>
+                }
+                @if (task.estimatedHours) {
+                  <span class="kanban-card__estimate">
+                    <mat-icon inline>schedule</mat-icon>
+                    {{ task.estimatedHours }}h
+                  </span>
+                }
+              </div>
             </div>
 
             <button
