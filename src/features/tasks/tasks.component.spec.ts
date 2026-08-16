@@ -295,7 +295,13 @@ describe('TasksComponent', () => {
 
       // Tarea propia: acciones interactivas (2 tareas propias en este fixture: pendiente y completada)
       expect(screen.getAllByLabelText('Cambiar estado de la tarea')).toHaveLength(2);
-      expect(screen.getAllByLabelText('Horas estimadas')).toHaveLength(2);
+      const estimateInputs = screen.getAllByLabelText('Horas estimadas');
+      expect(estimateInputs).toHaveLength(2);
+
+      // El backend rechaza updateEstimate sobre tareas 'done' (terminal) — el input debe
+      // quedar deshabilitado en vez de dejar que el usuario dispare un error evitable.
+      expect((estimateInputs[0] as HTMLInputElement).disabled).toBe(false); // task-own: todo
+      expect((estimateInputs[1] as HTMLInputElement).disabled).toBe(true); // task-own-done: done
 
       // Tarea ajena: sin acciones, marcador "No asignada a ti"
       expect(screen.getByLabelText('No asignada a ti')).toBeTruthy();
