@@ -22,7 +22,7 @@
   color: var(--app-text, #e6e8ec);
 }
 
-// Selector de proyecto para desarrolladores
+// Selector de proyecto — compartido por ambos roles
 .tasks-project-selector {
   margin-bottom: 1.5rem;
 }
@@ -32,15 +32,6 @@
   background: var(--app-surface, #1a1d24);
   border-radius: 8px;
   padding: 0.25rem 0.5rem;
-}
-
-// Tabla de tareas — fondo de superficie
-.tasks-table {
-  width: 100%;
-  background: var(--app-surface, #1a1d24);
-  border-radius: 12px;
-  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.08));
-  overflow: hidden;
 }
 
 // Estado de carga centrado
@@ -92,167 +83,4 @@
     height: 1.1rem;
     flex-shrink: 0;
   }
-}
-
-// Badge de estado
-.status-badge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-
-  &--todo {
-    background: rgba(154, 160, 170, 0.12);
-    color: var(--app-muted, #9aa0aa);
-    border: 1px solid rgba(154, 160, 170, 0.2);
-  }
-
-  &--in-progress {
-    background: rgba(79, 140, 255, 0.15);
-    color: var(--app-accent, #4f8cff);
-    border: 1px solid rgba(79, 140, 255, 0.3);
-  }
-
-  &--done {
-    background: rgba(34, 197, 94, 0.15);
-    color: #86efac;
-    border: 1px solid rgba(34, 197, 94, 0.3);
-  }
-
-  &--cancelled {
-    background: rgba(244, 67, 54, 0.1);
-    color: #ef9a9a;
-    border: 1px solid rgba(244, 67, 54, 0.2);
-    text-decoration: line-through;
-    opacity: 0.7;
-  }
-}
-
-// Badge de prioridad
-.priority-badge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 99px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-
-  &--high {
-    background: rgba(244, 67, 54, 0.12);
-    color: #ef9a9a;
-    border: 1px solid rgba(244, 67, 54, 0.3);
-  }
-
-  &--medium {
-    background: rgba(255, 167, 38, 0.12);
-    color: #ffcc80;
-    border: 1px solid rgba(255, 167, 38, 0.3);
-  }
-
-  &--low {
-    background: rgba(34, 197, 94, 0.1);
-    color: #86efac;
-    border: 1px solid rgba(34, 197, 94, 0.2);
-  }
-}
-
-// Botones de acción en fila
-.action-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-// Columna de acciones — necesita más ancho que el resto para alojar
-// la confirmación inline de cancelación (label + 2 botones)
-.mat-column-actions {
-  flex: 0 0 220px;
-  min-width: 220px;
-}
-
-// Confirmación inline de cancelación
-.cancel-confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem 0.5rem;
-  padding: 0.25rem 0;
-
-  &__label {
-    font-size: 0.85rem;
-    color: var(--app-muted, #9aa0aa);
-  }
-}
-
-// Selector de estado inline en la tabla (desarrollador)
-.status-select {
-  font-size: 0.85rem;
-  min-width: 130px;
-}
-
-// Input de horas estimadas
-.estimate-input-wrap {
-  display: flex;
-  align-items: center;
-}
-
-.estimate-input {
-  width: 80px;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.12));
-  background: var(--app-surface, #1a1d24);
-  color: var(--app-text, #e6e8ec);
-  font-size: 0.875rem;
-
-  &:focus {
-    outline: none;
-    border-color: var(--app-accent, #4f8cff);
-  }
-}
-
-// Texto muted para celdas deshabilitadas
-.tasks-muted {
-  color: var(--app-muted, #9aa0aa);
-  font-size: 0.875rem;
-}
-
-// Badge de vencimiento — resalta la fecha de una tarea vencida
-.overdue-badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
-  background: rgba(244, 67, 54, 0.12);
-  color: #ef9a9a;
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  font-weight: 600;
-}
-
-// Toggle lista/kanban (desarrollador)
-.tasks-view-toggle {
-  margin-bottom: 0.75rem;
-}
-
-// Texto aclaratorio bajo el toggle: el tablero kanban solo agrupa la página actual
-.tasks-kanban-caption {
-  font-size: 0.8rem;
-  color: var(--app-muted, #9aa0aa);
-  margin: 0 0 1rem;
-}
-
-// Barra de filtros de la tabla admin
-.tasks-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.tasks-filter-select {
-  min-width: 200px;
-  background: var(--app-surface, #1a1d24);
-  border-radius: 8px;
-  padding: 0.25rem 0.5rem;
 }

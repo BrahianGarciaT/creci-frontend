@@ -140,6 +140,34 @@
   &__menu-trigger {
     flex-shrink: 0;
   }
+
+  // Contenedor de acciones fuera del handle de drag (input de estimación + menú)
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+}
+
+// Input de horas estimadas — mismo estilo que el de la tabla que reemplaza (developer, tarea propia)
+.kanban-card__estimate-input-wrap {
+  display: flex;
+}
+
+.kanban-card__estimate-input {
+  width: 3.25rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.75rem;
+  background: var(--app-bg, #0f1115);
+  color: var(--app-text, #e6e8ec);
+  border: 1px solid var(--app-border, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 // Badge de prioridad — duplicado de tasks.component.scss porque el
