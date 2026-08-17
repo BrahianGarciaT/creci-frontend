@@ -14,7 +14,13 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
-import { Task, TasksService, TaskStatus, UpdateStatusPayload } from './tasks.service';
+import {
+  Task,
+  TasksService,
+  TaskStatus,
+  UpdateEstimatePayload,
+  UpdateStatusPayload,
+} from './tasks.service';
 import {
   CreateTaskDialogComponent,
   CreateTaskDialogData,
@@ -273,6 +279,9 @@ export class TasksComponent {
   /** Determina si una tarjeta del kanban ofrece acciones de gestión (editar/cancelar) — solo admin */
   readonly canManageTask = (): boolean => this.isAdmin();
 
+  /** Determina si una tarjeta del kanban muestra el input editable de horas estimadas — solo developer, tarea propia */
+  readonly canEstimateTask = (task: Task): boolean => !this.isAdmin() && this.isOwnTask(task);
+
   /**
    * Recibe el intent de cambio de estado emitido por el tablero kanban (drag o menú
    * de accesibilidad). Ignora drops al mismo estado o a un destino no permitido por
@@ -315,5 +324,25 @@ export class TasksComponent {
   /** Verifica si una tarea pertenece al usuario autenticado */
   isOwnTask(task: Task): boolean {
     return task.assignee?.id === this.currentUser()?.id;
+  }
+
+  /** Actualiza las horas estimadas de una tarea (developer — solo tareas propias) */
+  updateTaskEstimate(task: Task, estimatedHours: number): void {
+    if (!estimatedHours || estimatedHours <= 0) return;
+    const payload: UpdateEstimatePayload = { estimatedHours };
+
+    this.tasksService.updateEstimate(task.id, payload).subscribe({
+      next: () => {
+        this.projectTasksResource.reload();
+      },
+      error: () => {
+        this.mutationError.set('Error al actualizar las horas estimadas. Intenta nuevamente.');
+      },
+    });
+  }
+
+  /** Recibe el intent de actualización de horas estimadas emitido por el tablero kanban */
+  onKanbanEstimateChange({ task, estimatedHours }: { task: Task; estimatedHours: number }): void {
+    this.updateTaskEstimate(task, estimatedHours);
   }
 }

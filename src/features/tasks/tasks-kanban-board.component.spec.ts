@@ -275,4 +275,47 @@ describe('TasksKanbanBoardComponent', () => {
       expect(screen.queryByRole('menuitem', { name: /^cancelar tarea/i })).toBeNull();
     });
   });
+
+  describe('canEstimate / estimateChange (input de horas estimadas en la tarjeta, developer dueño)', () => {
+    it('sin `canEstimate` no renderiza el input y muestra el valor de solo lectura', async () => {
+      const ownTask = buildTask({ id: 'task-own', title: 'Tarea propia', estimatedHours: 4 });
+      await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ todo: [ownTask] }) },
+        providers: [provideAnimationsAsync()],
+      });
+
+      expect(screen.queryByRole('spinbutton', { name: 'Horas estimadas de Tarea propia' })).toBeNull();
+      expect(screen.getByText('4h')).toBeTruthy();
+    });
+
+    it('con `canEstimate` true renderiza el input habilitado y emite `estimateChange` al cambiarlo', async () => {
+      const ownTask = buildTask({ id: 'task-own', title: 'Tarea propia', estimatedHours: 4, status: 'todo' });
+      const { fixture } = await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ todo: [ownTask] }), canEstimate: () => true },
+        providers: [provideAnimationsAsync()],
+      });
+
+      const estimateEmitted = vi.fn();
+      fixture.componentInstance.estimateChange.subscribe(estimateEmitted);
+
+      const input = screen.getByRole('spinbutton', { name: 'Horas estimadas de Tarea propia' }) as HTMLInputElement;
+      expect(input.disabled).toBe(false);
+
+      input.value = '6';
+      input.dispatchEvent(new Event('change'));
+
+      expect(estimateEmitted).toHaveBeenCalledWith({ task: ownTask, estimatedHours: 6 });
+    });
+
+    it('el input queda deshabilitado cuando la tarea está done o cancelled', async () => {
+      const doneTask = buildTask({ id: 'task-done', title: 'Tarea completada', status: 'done', estimatedHours: 8 });
+      await render(TasksKanbanBoardComponent, {
+        inputs: { columns: buildColumns({ done: [doneTask] }), canEstimate: () => true },
+        providers: [provideAnimationsAsync()],
+      });
+
+      const input = screen.getByRole('spinbutton', { name: 'Horas estimadas de Tarea completada' }) as HTMLInputElement;
+      expect(input.disabled).toBe(true);
+    });
+  });
 });

@@ -77,10 +77,12 @@
         [columns]="tasksByStatus()"
         [canDrag]="canDragTask"
         [canManage]="canManageTask"
+        [canEstimate]="canEstimateTask"
         (statusChange)="onKanbanStatusChange($event)"
         (reorderChange)="onKanbanReorder($event)"
         (editTask)="editTask($event)"
         (cancelTask)="cancelTask($event)"
+        (estimateChange)="onKanbanEstimateChange($event)"
       />
     }
   }

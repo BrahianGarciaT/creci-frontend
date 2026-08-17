@@ -3,6 +3,7 @@ import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Task, TaskStatus } from './tasks.service';
 
 // Columna fija del tablero kanban — `droppable` controla si acepta cards soltadas
@@ -43,7 +44,7 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   selector: 'app-tasks-kanban-board',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DragDropModule, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [DragDropModule, MatButtonModule, MatIconModule, MatMenuModule, MatTooltipModule],
   templateUrl: './tasks-kanban-board.component.html',
   styleUrl: './tasks-kanban-board.component.scss',
 })
@@ -54,12 +55,19 @@ export class TasksKanbanBoardComponent {
   // Restringe qué tarjetas ofrecen acciones de gestión (editar/cancelar) en el menú por tarjeta
   // (solo admin). Ausente/`false` para una tarjeta oculta ambas acciones.
   readonly canManage = input<(task: Task) => boolean>();
+  // Restringe qué tarjetas muestran el input editable de horas estimadas (solo el
+  // developer dueño de la tarea). Ausente/`false` para una tarjeta muestra el valor
+  // de solo lectura en el meta de la tarjeta.
+  readonly canEstimate = input<(task: Task) => boolean>();
   readonly statusChange = output<{ task: Task; status: TaskStatus }>();
   // Nuevo orden visual de una columna tras un drag-and-drop dentro de sí misma
   readonly reorderChange = output<{ status: TaskStatus; taskIds: string[] }>();
   // Intents de gestión emitidos desde el menú por tarjeta (solo cuando `canManage` lo permite)
   readonly editTask = output<Task>();
   readonly cancelTask = output<Task>();
+  // Intent de actualización de horas estimadas emitido desde el input de la tarjeta
+  // (solo cuando `canEstimate` lo permite)
+  readonly estimateChange = output<{ task: Task; estimatedHours: number }>();
 
   readonly dropListId = (status: TaskStatus): string => `${KANBAN_DROP_LIST_PREFIX}${status}`;
 
@@ -90,6 +98,16 @@ export class TasksKanbanBoardComponent {
   /** Emite el intent de cambio de estado — usado tanto por drag como por el menú de accesibilidad */
   requestStatusChange(task: Task, status: TaskStatus): void {
     this.statusChange.emit({ task, status });
+  }
+
+  /** El input de horas estimadas se deshabilita en columnas terminales (done/cancelled) */
+  isEstimateDisabled(task: Task): boolean {
+    return task.status === 'done' || task.status === 'cancelled';
+  }
+
+  /** Emite el intent de actualización de horas estimadas desde el input de la tarjeta */
+  requestEstimateChange(task: Task, estimatedHours: number): void {
+    this.estimateChange.emit({ task, estimatedHours });
   }
 
   /**

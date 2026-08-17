@@ -334,6 +334,102 @@ describe('TasksComponent', () => {
     });
   });
 
+  describe('canEstimateTask — solo developer, tarea propia', () => {
+    it('admin: `canEstimateTask` es false incluso para una tarea que le fue asignada', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(adminUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+      httpMock.expectOne(`${apiUrl}/projects?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length) });
+      httpMock.expectOne(`${apiUrl}/users`).flush(mockUsers);
+      await fixture.whenStable();
+
+      const ownTask = mockTasks.find((t) => t.id === 'task-own')!;
+      expect(fixture.componentInstance.canEstimateTask(ownTask)).toBe(false);
+    });
+
+    it('developer: `canEstimateTask` es false para una tarea ajena y true para una propia', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length) });
+      await fixture.whenStable();
+
+      const ownTask = mockTasks.find((t) => t.id === 'task-own')!;
+      const foreignTask = mockTasks.find((t) => t.id === 'task-other')!;
+      expect(fixture.componentInstance.canEstimateTask(ownTask)).toBe(true);
+      expect(fixture.componentInstance.canEstimateTask(foreignTask)).toBe(false);
+    });
+  });
+
+  describe('updateTaskEstimate / onKanbanEstimateChange (developer, tarea propia)', () => {
+    it('envía PATCH /tasks/:id/estimate con las horas provistas y recarga el tablero', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length) });
+      await fixture.whenStable();
+
+      fixture.componentInstance.selectedProjectId.set('project-1');
+      fixture.detectChanges();
+
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?all=true`)
+        .flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
+      await fixture.whenStable();
+
+      const ownTask = mockTasks.find((t) => t.id === 'task-own')!;
+      fixture.componentInstance.onKanbanEstimateChange({ task: ownTask, estimatedHours: 6 });
+
+      const req = httpMock.expectOne(`${apiUrl}/tasks/${ownTask.id}/estimate`);
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body).toEqual({ estimatedHours: 6 });
+      req.flush({ ...ownTask, estimatedHours: 6 });
+
+      fixture.detectChanges();
+      httpMock
+        .expectOne(`${apiUrl}/tasks/project/project-1?all=true`)
+        .flush({ data: mockTasks, meta: pageMeta(mockTasks.length) });
+      await fixture.whenStable();
+    });
+
+    it('ignora un valor de horas estimadas inválido (0 o negativo) sin llamar al backend', async () => {
+      const { fixture } = await render(TasksComponent, {
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          { provide: AuthService, useValue: buildFakeAuthService(developerUser) },
+        ],
+      });
+      httpMock = TestBed.inject(HttpTestingController);
+      httpMock.expectOne(`${apiUrl}/projects/mine?limit=100`).flush({ data: mockProjects, meta: pageMeta(mockProjects.length) });
+      await fixture.whenStable();
+
+      const ownTask = mockTasks.find((t) => t.id === 'task-own')!;
+      fixture.componentInstance.updateTaskEstimate(ownTask, 0);
+
+      httpMock.verify();
+    });
+  });
+
   describe('Cambio de estado por drag — admin usa `update`, developer usa `/status`', () => {
     const setupAdminBoard = async () => {
       const { fixture } = await render(TasksComponent, {
